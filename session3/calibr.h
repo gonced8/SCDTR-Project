@@ -25,7 +25,7 @@ class CALIBRATION {
 
 	public:
 		void init(byte nodeId, byte nNodes);
-		void run(float* measurements);
+		void run(float *measurements);
 
 };
 /*--------Function propotypes--------*/

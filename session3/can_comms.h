@@ -32,10 +32,11 @@ union my_can_msg {
 };
 
 /*--------Function propotypes--------*/
-MCP2515::ERROR write(byte from, byte to, byte priority,  uint32_t val);
+MCP2515::ERROR write(byte to, byte priority,  uint32_t val);
 MCP2515::ERROR read(unsigned long &c);
 void setMasksFilters();
 void decodeMessage(uint32_t, byte*, uint32_t);
+void barrier();
 
 
 #endif // CAN_COMMS_H

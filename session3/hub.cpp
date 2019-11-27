@@ -25,5 +25,5 @@ void hubFinder(){
     	delay(1000);
 	}
 	hub = true;
-    write(0, 0, 3, -1); // Message to tell other nodes they are not the hub
+  write(0, 0, 0); // Message to tell other nodes they are not the hub
 }

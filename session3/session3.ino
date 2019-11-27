@@ -33,7 +33,7 @@ void setup() {
   hubFinder();
 
   // System calibration
-  float* measurements;
+  float measurements[nNodes+1];
   calibrator.init(nodeId, nNodes);
   calibrator.run(measurements);
   float measured_lux;
@@ -49,10 +49,10 @@ void loop() {
   unsigned long c;
   MCP2515::ERROR err;
   if(hub){
-    for(int i = 0; i < 3; i++) { //send 3 msgs in a burst
+    for(int i = 1; i <= nNodes; i++) { //send 3 msgs in a burst
       Serial.print("Sending: ");
       Serial.println(counter);
-      Serial.println(write(0, 0, i, counter++));
+      Serial.println(write(i, 0, counter++));
     }
   }
   delay(10);
