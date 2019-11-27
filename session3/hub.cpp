@@ -3,9 +3,9 @@
 #include "hub.h"
 
 /*-------Variable definition--------*/
-extern byte nodeId = 0; // initialize the variable to make it global
-extern byte nNodes = 3; // TODO: should be automatically computed
-extern bool hub = false;
+byte nodeId = 0; // initialize the variable to make it global
+byte nNodes = 3; // TODO: should be automatically computed
+bool hub = false;
 
 /*--------Function definition--------*/
 void getNodeId(){
@@ -25,5 +25,5 @@ void hubFinder(){
     	delay(1000);
 	}
 	hub = true;
-    write(3, -1); // Message to tell other nodes they are not the hub
+    write(0, 0, 3, -1); // Message to tell other nodes they are not the hub
 }

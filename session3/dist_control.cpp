@@ -3,9 +3,9 @@
 #include "dist_control.h"
 
 /*-------Variable definition--------*/
-extern const float m[3] = {1, 1, 1};
-extern const float b[3] = {1, 1, 1};
-extern float k[3] = {0.0, 0.0, 0.0};
+const float m[3] = {1, 1, 1};
+const float b[3] = {1, 1, 1};
+float k[3] = {0.0, 0.0, 0.0};
 
 /*--------Function definition--------*/
 float getLux(float measurement) {

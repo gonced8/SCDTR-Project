@@ -52,7 +52,7 @@ void loop() {
     for(int i = 0; i < 3; i++) { //send 3 msgs in a burst
       Serial.print("Sending: ");
       Serial.println(counter);
-      Serial.println(write(i, counter++));
+      Serial.println(write(0, 0, i, counter++));
     }
   }
   delay(10);

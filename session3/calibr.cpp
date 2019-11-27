@@ -27,7 +27,7 @@ void CALIBRATION::run(float* measurements) {
 		while(ii+1 != nNodes) {
 			if (ii == nodeId) {
 				// write message to bus
-				write(0, (unsigned long) nodeId);
+				write(0, 0, 0, (byte) nodeId);
 			}
 			// read message from bus
 			// if other node sends message, increase counter

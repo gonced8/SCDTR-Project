@@ -4,16 +4,17 @@
 
 /*-------Variable definition--------*/
 // CAN Bus
-extern MCP2515 mcp2515(10); //SS pin 10
-extern uint32_t filt0 = 0x00;                      // accepts messages with own ID
-extern uint32_t filt1 = 0x03;                      // accepts messages from everyone
+MCP2515 mcp2515(10); //SS pin 10
+uint32_t filt0 = 0x00;                      // accepts messages with own ID
+uint32_t filt1 = 0x03;                      // accepts messages from everyone
+byte id_counter = 0;
 
 /*--------Function definition--------*/
 MCP2515::ERROR write(byte from, byte to, byte priority,  uint32_t val) {
   	uint32_t id = 0;
     id_counter++;
     if(id_counter > id_counter_max)
-      id_conter = 0;
+      id_counter = 0;
     id |= (to & 0x03);
     id |= (from & 0x03) << 2;
     id |= id_counter << 4;
