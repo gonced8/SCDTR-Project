@@ -1,7 +1,6 @@
 // Implementation of system calibration class
 
 #include "calibr.h"
-
 /*-------Variable definition--------*/
 
 
@@ -18,12 +17,12 @@ void CALIBRATION::run(float *measurements) {
 			analogWrite(ledPin, 255);
 		else
 			analogWrite(ledPin, 0);
-
-		barrier();
-
+    //Serial.println("Hello1");
+		//barrier();
+    //Serial.println("Hello2");
 		// Measure ldr voltage, compute gain
 		measurements[nodeCounter] = analogRead(ldrPin);
 
-    barrier();
+    //barrier();
 	}
 }

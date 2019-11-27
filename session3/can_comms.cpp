@@ -6,7 +6,7 @@
 // CAN Bus
 MCP2515 mcp2515(10); //SS pin 10
 uint32_t filt0 = 0x00;                      // accepts messages with own ID
-uint32_t filt1 = 0x03;                      // accepts messages from everyone
+uint32_t filt1 = 0x00;                      // accepts messages from everyone
 byte id_counter = 0;
 
 /*--------Function definition--------*/
