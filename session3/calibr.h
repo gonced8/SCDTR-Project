@@ -4,16 +4,13 @@
 #define CALIBR_H
 
 // System imports
+#include <Arduino.h>
 #include <mcp2515.h>
 #include <stdlib.h>
 
 // Custom imports
 #include "can_comms.h"
 #include "dist_control.h"
-
-// System imports
-#include <Arduino.h>
-
 
 /*-------Variable declaration-------*/
 
@@ -24,7 +21,7 @@ class CALIBRATION {
 	byte nNodes, nodeId, nodeCounter = -1;
 
 	public:
-		void init(byte nodeId, byte nNodes);
+    void init(byte id, byte n, float *&measurements);
 		void run(float *measurements);
 
 };

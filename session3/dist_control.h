@@ -9,15 +9,19 @@
 // Custom imports
 #include "hub.h"
 
-/*-------Variable declaration-------*/
+/*-------Constants declaration-------*/
 // Input/Output pins
 constexpr byte ledPin = 3;
 constexpr byte ldrPin = 10;
+
+// Maximum illuminance value
+constexpr float max_lux = 100;
 
 /* Circuit parameters */
 constexpr int Vcc = 5000;  // [mV]
 constexpr int R1 = 10;     // [KOhm]
 
+/*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[3];
 extern const float b[3];

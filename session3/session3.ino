@@ -8,6 +8,7 @@
 
 /*----------------- Variables -----------------*/
 unsigned long counter = 0;
+float *measurements;
 CALIBRATION calibrator;
 
 /*----------- Function Definitions ------------*/
@@ -33,15 +34,15 @@ void setup() {
   hubFinder();
 
   // System calibration
-  float measurements[nNodes+1];
-  calibrator.init(nodeId, nNodes);
+  calibrator.init(nodeId, nNodes, measurements);
   calibrator.run(measurements);
+  // Convert measured values to lux
   float measured_lux;
-  for(int ii = 0; ii < nNodes; ii++) {
-      measured_lux = getLux(measurements[ii]);
-      k[ii] = (float) measured_lux / 100;
-      Serial.print("Value of k"); Serial.print(nodeId); Serial.print(ii); Serial.print(" is equal to "); 
-      Serial.println(k[ii]);
+  for(int i = 0; i < nNodes; i++) {
+      measured_lux = getLux(measurements[i]);
+      k[i] = measured_lux / max_lux;
+      Serial.print("Value of k"); Serial.print(nodeId); Serial.print(i); Serial.print(" is equal to "); 
+      Serial.println(k[i]);
   }
 }
 

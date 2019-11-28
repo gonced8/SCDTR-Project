@@ -4,9 +4,10 @@
 /*-------Variable definition--------*/
 
 
-void CALIBRATION::init(byte id, byte n) {
+void CALIBRATION::init(byte id, byte n, float *&measurements) {
 	nodeId = id;
 	nNodes = n;
+  measurements = (float *) malloc((n+1)*sizeof(float));
 }
 
 void CALIBRATION::run(float *measurements) {
@@ -17,12 +18,13 @@ void CALIBRATION::run(float *measurements) {
 			analogWrite(ledPin, 255);
 		else
 			analogWrite(ledPin, 0);
-    //Serial.println("Hello1");
-		//barrier();
-    //Serial.println("Hello2");
+
+		barrier();
+    
 		// Measure ldr voltage, compute gain
+    delay(500);
 		measurements[nodeCounter] = analogRead(ldrPin);
 
-    //barrier();
+    barrier();
 	}
 }

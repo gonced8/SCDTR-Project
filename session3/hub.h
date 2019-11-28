@@ -10,12 +10,14 @@
 // Custom imports
 #include "can_comms.h"
 
+/*-------Constant declaration-------*/
+constexpr byte ID0 = 7;
+constexpr byte ID1 = 8;
+
 /*-------Variable declaration-------*/
 // Node identification
 extern byte nodeId;
 extern byte nNodes;
-constexpr byte ID0 = 7;
-constexpr byte ID1 = 8;
 extern bool hub;
 
 /*--------Function propotypes--------*/

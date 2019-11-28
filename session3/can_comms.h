@@ -12,23 +12,22 @@
 #include "comm_codes.h"
 #include "hub.h"
 
-
-/*-------Variable declaration-------*/
-
-// CAN Bus
-extern MCP2515 mcp2515;
+/*-------Constants declaration-------*/
+constexpr byte data_bytes = 4;
 constexpr uint32_t mask = 0x00000003;       // To check the ID
-extern uint32_t filt0;
-extern uint32_t filt1;
 constexpr uint32_t code_mask = 0x0000003F;  // To check the mask
 constexpr byte masksize = 6;
+constexpr byte id_counter_max = 32;
+
+/*-------Variable declaration-------*/
+// CAN Bus
+extern MCP2515 mcp2515;
 extern byte id_counter;
-constexpr byte id_counter_max = 255;
 
 /*---------Type definition----------*/
 union my_can_msg {
   uint32_t value;
-  uint8_t bytes[4];
+  uint8_t bytes[data_bytes];
 };
 
 /*--------Function propotypes--------*/
