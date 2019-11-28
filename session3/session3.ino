@@ -38,11 +38,16 @@ void setup() {
   calibrator.run(measurements);
   // Convert measured values to lux
   float measured_lux;
-  for(int i = 0; i < nNodes; i++) {
+  
+  float disturbance = getLux(measurements[0]);
+  Serial.print("Value of disturbance"); Serial.print(" is equal to "); 
+  Serial.println(disturbance);
+
+  for(int i = 1; i <= nNodes; i++) {
       measured_lux = getLux(measurements[i]);
-      k[i] = measured_lux / max_lux;
+      k[i-1] = measured_lux / max_lux;
       Serial.print("Value of k"); Serial.print(nodeId); Serial.print(i); Serial.print(" is equal to "); 
-      Serial.println(k[i]);
+      Serial.println(k[i-1]);
   }
 }
 
