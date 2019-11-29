@@ -67,7 +67,7 @@ void setup() {
 void loop() {
   Serial.print("interrupt "); Serial.println(interrupt); 
   if (interrupt)
-    handleInterrupt;
+    handleInterrupt();
 
   write(sendTo, 0, counter++);
 }
