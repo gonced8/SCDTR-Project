@@ -4,13 +4,13 @@
 /*-------Variable definition--------*/
 
 
-void CALIBRATION::init(byte id, byte n, float *&measurements) {
+void Calibration::init(byte id, byte n, float *&measurements) {
 	nodeId = id;
 	nNodes = n;
   measurements = (float *) malloc((n+1)*sizeof(float));
 }
 
-void CALIBRATION::run(float *measurements) {
+void Calibration::run(float *measurements) {
 	for(byte nodeCounter=0; nodeCounter <= nNodes; nodeCounter++) {
 		if (nodeCounter == nodeId)
 			analogWrite(ledPin, 255);

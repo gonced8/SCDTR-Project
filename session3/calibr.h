@@ -16,7 +16,7 @@
 
 
 /*---------Type definition----------*/
-class CALIBRATION {
+class Calibration {
 
 	byte nNodes, nodeId, nodeCounter = -1;
 

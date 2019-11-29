@@ -7,28 +7,6 @@ volatile bool mcp2515_overflow = false;
 volatile bool arduino_overflow = false;
 volatile can_frame_stream cf_stream = can_frame_stream();
 
-void irqHandler() {
-  can_frame frame;
-  uint8_t irq = mcp2515.getInterrupts(); //read CANINTF
-  if (irq & MCP2515::CANINTF_RX0IF) { //msg in receive buffer 0
-    mcp2515.readMessage(MCP2515::RXB0, & frame); //also clears RX0IF
-    if(!cf_stream.put(frame))
-      arduino_overflow = true;
-  }
-  if (irq & MCP2515::CANINTF_RX1IF) { //msg in receive buffer 1
-    mcp2515.readMessage(MCP2515::RXB1, & frame); //also clears RX1IF
-    if(!cf_stream.put(frame))
-      arduino_overflow = true;
-  }
-  irq = mcp2515.getErrorFlags(); //read EFLG
-  if( (irq & MCP2515::EFLG_RX0OVR) | (irq & MCP2515::EFLG_RX1OVR) ) {
-    mcp2515_overflow = true;
-    mcp2515.clearRXnOVRFlags();
-  }
-  mcp2515.clearInterrupts();
-  interrupt = true; //notify loop()
-}
-
 /*-------Variable definition--------*/
 // CAN Bus
 MCP2515 mcp2515(10); //SS pin 10
@@ -37,9 +15,7 @@ byte id_counter = 0;
 /*--------Function definition--------*/
 MCP2515::ERROR write(byte to, byte priority,  uint32_t val) {
   	uint32_t id = 0;
-    id_counter++;
-    if(id_counter >= id_counter_max)
-      id_counter = 0;
+    id_counter = (++id_counter) % id_counter_max;
     id |= (to & 0x03);                // 2 bits for to id
     id |= (nodeId & 0x03) << 2;       // 2 bits for from id
     id |= (id_counter & 0x1F) << 4;   // 5 bits for counter
@@ -50,8 +26,10 @@ MCP2515::ERROR write(byte to, byte priority,  uint32_t val) {
   	frame.can_dlc = data_bytes;
   	my_can_msg msg;
   	msg.value = val;
+    
   	for(int i = 0; i < data_bytes; i++)
     	frame.data[i] = msg.bytes[i];
+     
   	return mcp2515.sendMessage(&frame);
 }
 
@@ -96,11 +74,32 @@ void barrier() {
       write(0, 0, 0);
     }
     else{
-      Serial.println("OLA");
       // read message from bus
       while(cf_stream.get(frame) != 1) {
-        delay(500);
+        delay(1);
       }
     }
   }
+}
+
+void irqHandler() {
+  can_frame frame;
+  uint8_t irq = mcp2515.getInterrupts(); //read CANINTF
+  if (irq & MCP2515::CANINTF_RX0IF) { //msg in receive buffer 0
+    mcp2515.readMessage(MCP2515::RXB0, &frame); //also clears RX0IF
+    if(!cf_stream.put(frame))
+      arduino_overflow = true;
+  }
+  if (irq & MCP2515::CANINTF_RX1IF) { //msg in receive buffer 1
+    mcp2515.readMessage(MCP2515::RXB1, &frame); //also clears RX1IF
+    if(!cf_stream.put(frame))
+      arduino_overflow = true;
+  }
+  irq = mcp2515.getErrorFlags(); //read EFLG
+  if( (irq & MCP2515::EFLG_RX0OVR) | (irq & MCP2515::EFLG_RX1OVR) ) {
+    mcp2515_overflow = true;
+    mcp2515.clearRXnOVRFlags();
+  }
+  mcp2515.clearInterrupts();
+  interrupt = true; //notify loop()
 }
