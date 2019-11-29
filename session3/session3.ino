@@ -64,7 +64,7 @@ void loop() {
   if (interrupt)
     handleInterrupt;
 
-  write((nodeId+1)%nNodes, 0, counter++);
+  write(1+(nodeId)%nNodes, 0, counter++);
 }
 
 void handleInterrupt() {
