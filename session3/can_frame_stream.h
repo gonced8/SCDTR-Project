@@ -11,8 +11,8 @@ class can_frame_stream {
   bool write_lock; //buffer full
 public:
   can_frame_stream() : read_index{0}, write_index{0}, write_lock{false} {};
-  int put(can_frame &frame);
-  int get(can_frame &frame);
+  byte put(can_frame &frame);
+  byte get(can_frame &frame);
 };
 
 #endif // CAN_FRAME_STREAM

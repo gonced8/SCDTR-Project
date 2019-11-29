@@ -1,6 +1,6 @@
 #include "can_frame_stream.h"
 
-int can_frame_stream::put(can_frame &frame) {
+byte can_frame_stream::put(can_frame &frame) {
   if (write_lock)
     return 0; //buffer full
   cf_buffer[write_index] = frame;
@@ -10,7 +10,7 @@ int can_frame_stream::put(can_frame &frame) {
   return 1;
 }
 
-int can_frame_stream::get(can_frame &frame) {
+byte can_frame_stream::get(can_frame &frame) {
   if (read_index == write_index) {
     if (write_lock)
       write_lock = false; //release lock

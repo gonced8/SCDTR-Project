@@ -11,6 +11,7 @@ unsigned long counter = 0;
 float *measurements;
 Calibration calibrator;
 byte sendTo;
+byte get_output;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -63,9 +64,7 @@ void setup() {
   Serial.println(sendTo);
 }
 
-void loop() {
-  Serial.println(sendTo);
-  
+void loop() {  
   if (interrupt)
     handleInterrupt;
 
@@ -86,11 +85,14 @@ void handleInterrupt() {
   }
 
   can_frame frame;
-  while ( cf_stream.get(frame) ) {
+  while ( get_output = cf_stream.get(frame) ) {
+    Serial.print("get_output "); Serial.println(get_output);
     my_can_msg msg;
     for (int i = 0; i < 4; i++)
       msg.bytes[i] = frame.data[i];
     Serial.print("\tReceiving: ");
     Serial.println(msg.value);
   }
+  Serial.print("get_output "); Serial.println(get_output);
+
 }
