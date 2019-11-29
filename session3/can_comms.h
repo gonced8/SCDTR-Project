@@ -14,7 +14,7 @@
 #include "hub.h"
 
 /*-------Constants declaration-------*/
-constexpr byte data_bytes = 4;
+constexpr byte data_bytes = 6;
 constexpr uint32_t mask = 0x00000003;       // To check the ID
 constexpr uint32_t code_mask = 0x0000003F;  // To check the mask
 constexpr byte masksize = 6;

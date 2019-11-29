@@ -10,8 +10,7 @@
 unsigned long counter = 0;
 float *measurements;
 Calibration calibrator;
-byte sendTo;
-byte get_output;
+can_frame frame;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -36,44 +35,42 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  /*
   // See if this board is the hub
-  hubFinder();
+  // hubFinder();
 
   // System calibration
   calibrator.init(nodeId, nNodes, measurements);
-  calibrator.run(measurements);
 
-  // Convert measured values to lux
-  float measured_lux;
+  /*
+    calibrator.run(measurements);
 
-  float disturbance = getLux(measurements[0]);
-  Serial.print("Value of disturbance"); Serial.print(" is equal to ");
-  Serial.println(disturbance);
+    // Convert measured values to lux
+    float measured_lux;
 
-  for (int i = 1; i <= nNodes; i++) {
+    float disturbance = getLux(measurements[0]);
+    Serial.print("Value of disturbance"); Serial.print(" is equal to ");
+    Serial.println(disturbance);
+
+    for (int i = 1; i <= nNodes; i++) {
     measured_lux = getLux(measurements[i]);
     k[i - 1] = measured_lux / max_lux;
     Serial.print("Value of k"); Serial.print(nodeId); Serial.print(i); Serial.print(" is equal to ");
     Serial.println(k[i - 1]);
-  }
+    }
   */
 
   Serial.println("Setup done.");
-  sendTo = 1+(nodeId)%nNodes;
-  Serial.println(sendTo);
 }
 
 void loop() {
-  Serial.print("interrupt "); Serial.println(interrupt); 
-  if (interrupt)
+  Serial.print("interrupt "); Serial.println(interrupt);
+  if (interrupt)  // there are new messages
     handleInterrupt();
 
-  write(sendTo, 0, counter++);
+  delay(10);
 }
 
 void handleInterrupt() {
-  Serial.println("DENTRO DO HANDLE DA INTERRUPÇÃO");
   interrupt = false;
 
   if (mcp2515_overflow) {
@@ -86,17 +83,20 @@ void handleInterrupt() {
     arduino_overflow = false;
   }
 
-  can_frame frame;
-  get_output = cf_stream.get(frame);
-  while ( get_output ) {
-    Serial.print("get_output "); Serial.println(get_output);
+  while ( cf_stream.get(frame) ) {
     my_can_msg msg;
     for (int i = 0; i < 4; i++)
       msg.bytes[i] = frame.data[i];
     Serial.print("\tReceiving: ");
     Serial.println(msg.value);
-    get_output = cf_stream.get(frame);
+    if (calibrator.isOn())
+      calibrator.run(measurements);
+    else {
+      Serial.print("Value of measurements:\t");
+      for (int i = 0; i <= nNodes; i++) {
+        Serial.print(measurements[i]); Serial.print("\t");
+      }
+      Serial.println();
+    }
   }
-  Serial.print("get_output "); Serial.println(get_output);
-
 }

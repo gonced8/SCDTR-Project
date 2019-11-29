@@ -5,29 +5,44 @@
 
 
 void Calibration::init(byte id, byte n, float *&measurements) {
-	nodeId = id;
-	nNodes = n;
-  measurements = (float *) malloc((n+1)*sizeof(float));
+  nodeId = id;
+  nNodes = n;
+  measurements = (float *) malloc((n + 1) * sizeof(float));
+  turn_led(0);
+  write(0, 0, 'c');
 }
 
 void Calibration::run(float *measurements) {
-	for(byte nodeCounter=0; nodeCounter <= nNodes; nodeCounter++) {
-		if (nodeCounter == nodeId)
-			analogWrite(ledPin, 255);
-		else
-			analogWrite(ledPin, 0);
+  if (nodeCounter == (nNodes - 1)) {
+    nodeCounter = 0;
+    if (measure_flag) {
+      measurements[current] = analogRead(ldrPin);
+      measure_flag = false;
+      write(0, 0, 'c');
+    }
+    else {
+      measure_flag = true;
+      current++;
+    }
+    
+    if (current == nodeId)
+      turn_led(255);
+    else
+      turn_led(0);
 
-    Serial.println(nodeCounter);
+    if (current == (nNodes + 1))
+      on = false;
+    else
+      write(0, 0, 'c');
+  }
+  else
+    nodeCounter++;
+}
 
-		barrier();
+void Calibration::turn_led(byte value) {
+  analogWrite(ledPin, value);
+}
 
-    Serial.println("Past first barrier");
-		// Measure ldr voltage, compute gain
-    delay(500);
-		measurements[nodeCounter] = analogRead(ldrPin);
-
-    barrier();
-
-    Serial.println("Past second barrier");
-	}
+bool Calibration::isOn() {
+  return on;
 }

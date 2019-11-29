@@ -2,15 +2,15 @@
 
 #include "can_comms.h"
 
-volatile bool interrupt = false; //notification flag for ISR and loop()
-volatile bool mcp2515_overflow = false;
-volatile bool arduino_overflow = false;
-can_frame_stream cf_stream = can_frame_stream();
-
 /*-------Variable definition--------*/
 // CAN Bus
 MCP2515 mcp2515(10); //SS pin 10
 byte id_counter = 0;
+
+volatile bool interrupt = false; //notification flag for ISR and loop()
+volatile bool mcp2515_overflow = false;
+volatile bool arduino_overflow = false;
+can_frame_stream cf_stream = can_frame_stream();
 
 /*--------Function definition--------*/
 MCP2515::ERROR write(byte to, byte priority,  uint32_t val) {
