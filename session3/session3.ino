@@ -73,6 +73,7 @@ void loop() {
 }
 
 void handleInterrupt() {
+  Serial.println("DENTRO DO HANDLE DA INTERRUPÇÃO");
   interrupt = false;
 
   if (mcp2515_overflow) {
