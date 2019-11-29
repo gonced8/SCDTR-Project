@@ -64,7 +64,8 @@ void setup() {
   Serial.println(sendTo);
 }
 
-void loop() {  
+void loop() {
+  Serial.print("interrupt "); Serial.println(interrupt); 
   if (interrupt)
     handleInterrupt;
 
@@ -85,13 +86,15 @@ void handleInterrupt() {
   }
 
   can_frame frame;
-  while ( get_output = cf_stream.get(frame) ) {
+  get_output = cf_stream.get(frame);
+  while ( get_output ) {
     Serial.print("get_output "); Serial.println(get_output);
     my_can_msg msg;
     for (int i = 0; i < 4; i++)
       msg.bytes[i] = frame.data[i];
     Serial.print("\tReceiving: ");
     Serial.println(msg.value);
+    get_output = cf_stream.get(frame);
   }
   Serial.print("get_output "); Serial.println(get_output);
 
