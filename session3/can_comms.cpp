@@ -2,6 +2,33 @@
 
 #include "can_comms.h"
 
+volatile bool interrupt = false; //notification flag for ISR and loop()
+volatile bool mcp2515_overflow = false;
+volatile bool arduino_overflow = false;
+volatile can_frame_stream cf_stream = can_frame_stream();
+
+void irqHandler() {
+  can_frame frame;
+  uint8_t irq = mcp2515.getInterrupts(); //read CANINTF
+  if (irq & MCP2515::CANINTF_RX0IF) { //msg in receive buffer 0
+    mcp2515.readMessage(MCP2515::RXB0, & frame); //also clears RX0IF
+    if(!cf_stream.put(frame))
+      arduino_overflow = true;
+  }
+  if (irq & MCP2515::CANINTF_RX1IF) { //msg in receive buffer 1
+    mcp2515.readMessage(MCP2515::RXB1, & frame); //also clears RX1IF
+    if(!cf_stream.put(frame))
+      arduino_overflow = true;
+  }
+  irq = mcp2515.getErrorFlags(); //read EFLG
+  if( (irq & MCP2515::EFLG_RX0OVR) | (irq & MCP2515::EFLG_RX1OVR) ) {
+    mcp2515_overflow = true;
+    mcp2515.clearRXnOVRFlags();
+  }
+  mcp2515.clearInterrupts();
+  interrupt = true; //notify loop()
+}
+
 /*-------Variable definition--------*/
 // CAN Bus
 MCP2515 mcp2515(10); //SS pin 10
@@ -61,7 +88,7 @@ void decodeMessage(uint32_t message, byte &code, uint32_t &data) {
 
 void barrier() {
   // Synchronization code, wait for other nodes
-  unsigned long c;
+  can_frame frame;
   
   for(byte i=1; i<=nNodes; i++) {
     if (i == nodeId) {
@@ -69,9 +96,10 @@ void barrier() {
       write(0, 0, 0);
     }
     else{
+      Serial.println("OLA");
       // read message from bus
-      while(read(c) != MCP2515::ERROR_OK) {
-        delay(1);
+      while(cf_stream.get(frame) != 1) {
+        delay(500);
       }
     }
   }

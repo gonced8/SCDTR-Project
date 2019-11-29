@@ -23,6 +23,9 @@ void setup() {
 
   // MCP2515 Configuration
   SPI.begin();
+  attachInterrupt(0, irqHandler, FALLING); //use interrupt at pin 2
+  //Must tell SPI lib that ISR for interrupt vector zero will be using SPI
+  SPI.usingInterrupt(0);
   mcp2515.reset();
   mcp2515.setBitrate(CAN_1000KBPS, MCP_16MHZ);
   setMasksFilters(); 
@@ -52,7 +55,10 @@ void setup() {
 }
 
 void loop() {
+  can_frame frame;
   unsigned long c;
+  my_can_msg msg;
+
   MCP2515::ERROR err;
   if(hub){
     for(int i = 1; i <= nNodes; i++) { //send 3 msgs in a burst
@@ -62,9 +68,10 @@ void loop() {
     }
   }
   delay(10);
-  while(read(c) == MCP2515::ERROR_OK) {//all buffers
+  while(cf_stream.get(frame) == 1) {//all buffers
     Serial.print("\t\t\tReceiving:");
-    Serial.println(c);
+    for(int i = 0; i < 4; i++) msg.bytes[i] = frame.data[i];
+    c = msg.value;
     analogWrite(ledPin, c%255);
   }
   //Serial.println(read(c));

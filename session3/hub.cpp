@@ -16,15 +16,15 @@ void getNodeId(){
 void hubFinder(){
 	can_frame frame;
 	byte counter = 0;
-	Serial.print("Am I the hub?");
+	Serial.println("Am I the hub?");
 	while(!Serial.available()){
-		if(mcp2515.readMessage(&frame) == MCP2515::ERROR_OK || counter > 3)
+		if(cf_stream.get(frame) == 1 || counter > 3)
 		// We will wait 3 seconds to find a hub, else we will go default
 			return;
   	counter ++;
   	delay(1000);
 	}
 	hub = true;
-  Serial.print("Hello!");
+  Serial.println("Hello!");
   write(0, 0, 0); // Message to tell other nodes they are not the hub
 }
