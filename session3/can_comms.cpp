@@ -5,7 +5,7 @@
 volatile bool interrupt = false; //notification flag for ISR and loop()
 volatile bool mcp2515_overflow = false;
 volatile bool arduino_overflow = false;
-volatile can_frame_stream cf_stream = can_frame_stream();
+can_frame_stream cf_stream = can_frame_stream();
 
 /*-------Variable definition--------*/
 // CAN Bus

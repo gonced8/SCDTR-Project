@@ -3,7 +3,7 @@
 #include "hub.h"
 
 /*-------Variable definition--------*/
-byte nodeId = 0; // initialize the variable to make it global
+byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
 bool hub = false;
 

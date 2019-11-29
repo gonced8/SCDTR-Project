@@ -34,7 +34,7 @@ union my_can_msg {
 extern volatile bool interrupt; //notification flag for ISR and loop()
 extern volatile bool mcp2515_overflow;
 extern volatile bool arduino_overflow;
-extern volatile can_frame_stream cf_stream; //the object to use
+extern can_frame_stream cf_stream; //the object to use
 
 /*--------Function propotypes--------*/
 MCP2515::ERROR write(byte to, byte priority,  uint32_t val);

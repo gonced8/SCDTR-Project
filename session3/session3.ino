@@ -35,10 +35,10 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
+  /*
   // See if this board is the hub
   hubFinder();
 
-  /*
   // System calibration
   calibrator.init(nodeId, nNodes, measurements);
   calibrator.run(measurements);
