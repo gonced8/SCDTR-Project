@@ -10,6 +10,7 @@
 unsigned long counter = 0;
 float *measurements;
 Calibration calibrator;
+byte sendTo;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -58,13 +59,17 @@ void setup() {
   */
 
   Serial.println("Setup done.");
+  sendTo = 1+(nodeId)%nNodes;
+  Serial.println(sendTo);
 }
 
 void loop() {
+  Serial.println(sendTo);
+  
   if (interrupt)
     handleInterrupt;
 
-  write(1+(nodeId)%nNodes, 0, counter++);
+  write(sendTo, 0, counter++);
 }
 
 void handleInterrupt() {
