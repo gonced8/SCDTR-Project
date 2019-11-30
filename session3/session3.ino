@@ -56,6 +56,7 @@ void setup() {
   calibrator.start(nodeId, nNodes);
 
   Serial.println("Setup done.");
+  Serial.delay(1000);
 }
 
 void loop() {
