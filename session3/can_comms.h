@@ -29,7 +29,7 @@ extern byte id_counter;
 extern volatile bool interrupt; //notification flag for ISR and loop()
 extern volatile bool mcp2515_overflow;
 extern volatile bool arduino_overflow;
-extern can_frame_stream cf_stream; //the object to use
+extern volatile can_frame_stream cf_stream; //the object to use
 
 /*--------Function propotypes--------*/
 MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]);

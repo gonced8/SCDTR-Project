@@ -10,7 +10,7 @@ byte id_counter = 0;
 volatile bool interrupt = false; //notification flag for ISR and loop()
 volatile bool mcp2515_overflow = false;
 volatile bool arduino_overflow = false;
-can_frame_stream cf_stream = can_frame_stream();
+volatile can_frame_stream cf_stream = can_frame_stream();
 
 /*--------Function definition--------*/
 MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]) {

@@ -89,7 +89,7 @@ void handleInterrupt() {
     decodeMessage(msg, code0, code1, value);
 
     Serial.print("\tReceiving: ");
-    Serial.print(msg[0]); Serial.print(' '); Serial.println(msg[1]);
+    Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);
 
     switch (code0) {
       case calibr_start[0]:
