@@ -7,10 +7,9 @@
 #include "calibr.h"
 
 /*----------------- Variables -----------------*/
-unsigned long counter = 0;
-float *measurements;
-Calibration calibrator;
 can_frame frame;
+uint8_t msg[data_bytes]; char code0, code1; float value;
+Calibration calibrator;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -38,12 +37,7 @@ void setup() {
   // See if this board is the hub
   // hubFinder();
 
-  // System calibration
-  calibrator.init(nodeId, nNodes, measurements);
-
   /*
-    calibrator.run(measurements);
-
     // Convert measured values to lux
     float measured_lux;
 
@@ -59,6 +53,8 @@ void setup() {
     }
   */
 
+  calibrator.start(nodeId, nNodes);
+
   Serial.println("Setup done.");
 }
 
@@ -67,7 +63,10 @@ void loop() {
   if (interrupt)  // there are new messages
     handleInterrupt();
 
-  delay(10);
+  if (calibrator.isOn())
+    calibrator.run();
+
+  delay(500);
 }
 
 void handleInterrupt() {
@@ -84,19 +83,26 @@ void handleInterrupt() {
   }
 
   while ( cf_stream.get(frame) ) {
-    my_can_msg msg;
-    for (int i = 0; i < 4; i++)
-      msg.bytes[i] = frame.data[i];
+    for (int i = 0; i < data_bytes; i++)
+      msg[i] = frame.data[i];
+
+    decodeMessage(msg, code0, code1, value);
+
     Serial.print("\tReceiving: ");
-    Serial.println(msg.value);
-    if (calibrator.isOn())
-      calibrator.run(measurements);
-    else {
-      Serial.print("Value of measurements:\t");
-      for (int i = 0; i <= nNodes; i++) {
-        Serial.print(measurements[i]); Serial.print("\t");
-      }
-      Serial.println();
+    Serial.println(msg[0]);
+
+    switch (code0) {
+      case calibr_start[0]:
+        switch (code1) {
+          case calibr_start[1]:
+            calibrator.start(nodeId, nNodes);
+            break;
+
+          case calibr_wait[1]:
+            calibrator.receiveAck();
+            break;
+        }
+        break;
     }
   }
 }

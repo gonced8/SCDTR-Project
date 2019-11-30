@@ -26,21 +26,17 @@ extern MCP2515 mcp2515;
 extern byte id_counter;
 
 /*---------Type definition----------*/
-union my_can_msg {
-  uint32_t value;
-  uint8_t bytes[data_bytes];
-};
-
 extern volatile bool interrupt; //notification flag for ISR and loop()
 extern volatile bool mcp2515_overflow;
 extern volatile bool arduino_overflow;
 extern can_frame_stream cf_stream; //the object to use
 
 /*--------Function propotypes--------*/
-MCP2515::ERROR write(byte to, byte priority,  uint32_t val);
-MCP2515::ERROR read(unsigned long &c);
+MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]);
+MCP2515::ERROR read(uint8_t msg[data_bytes]);
 void setMasksFilters();
-void decodeMessage(uint32_t, byte*, uint32_t);
+void decodeMessage(uint8_t msg[data_bytes], char &code0, char &code1, float &value);
+void encodeMessage(uint8_t msg[data_bytes], char code0, char code1, float value);
 void barrier();
 void irqHandler();
 

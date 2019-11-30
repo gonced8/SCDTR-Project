@@ -17,18 +17,18 @@
 
 /*---------Type definition----------*/
 class Calibration {
-    byte nNodes, nodeId = -1;
-    byte nodeCounter = 0;
-    bool on = true;
-    byte current = 0;
-    bool measure_flag = false;
-    char *measurements;
-
+    byte nNodes, nodeId, nodeCounter;
+    float *measurements = NULL;
+    bool on = false;
+    enum Action {turn = 't', measure = 'm'};
+    Action action;
+    bool waiting;
+    byte nAck;
   public:
-    void init(byte id, byte n, float *&measurements);
-    void run(float *measurements);
-    void turn_led(byte value);
     bool isOn();
+    void start(byte id, byte n);
+    void run();
+    void receiveAck();
 };
 /*--------Function propotypes--------*/
 
