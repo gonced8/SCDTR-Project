@@ -28,7 +28,12 @@ MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]) {
   for (int i = 0; i < data_bytes; i++)
     frame.data[i] = msg[i];
 
-  return mcp2515.sendMessage(&frame);
+  MCP2515::ERROR err = mcp2515.sendMessage(&frame);
+
+  if (err != MCP2515::ERROR_OK)
+    Serial.println("\t\tError: MCP2515 TX Buffers Full");
+
+  return err;
 }
 
 MCP2515::ERROR read(uint8_t msg[data_bytes]) {
