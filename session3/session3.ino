@@ -62,7 +62,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("interrupt "); Serial.println(interrupt);
+  //Serial.print("interrupt "); Serial.println(interrupt);
   if (interrupt)  // there are new messages
     handleInterrupt();
 

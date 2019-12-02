@@ -14,7 +14,7 @@ bool Sync::isOn() {
 }
 
 void Sync::ask_node() {
-  unsigned long curr_time = millis;
+  unsigned long curr_time = millis();
 
   if (handshake) {
     current++;
@@ -22,6 +22,7 @@ void Sync::ask_node() {
     if (current == nodeId)
       current++;
 
+    Serial.println(current);
     // Check if sync with all
     if (current > nNodes){
       on = false;
@@ -36,6 +37,7 @@ void Sync::ask_node() {
   uint8_t msg[data_bytes];
   encodeMessage(msg, sync_ask[0], sync_ask[1], 0);
   write(current, 0, msg);
+  handshake = false;
   last_time = millis();
 }
 
@@ -44,6 +46,7 @@ void Sync::receive_answer(can_frame frame) {
 
   if (senderId == current) {
     handshake = true;
+    Serial.print("Receveid answer from node "); Serial.println(senderId);
   }
 }
 
