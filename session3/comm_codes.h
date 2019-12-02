@@ -10,4 +10,7 @@ const constexpr char calibr_wait[2] = {'C', 'w'};
 const constexpr char sync_ask[2] = {'S', 'Q'};
 const constexpr char sync_ans[2] = {'S', 'A'};
 
+const constexpr char ctrl_send = 'T';
+const constexpr char ctrl_recv = 'R';
+
 #endif //COM_CODES
