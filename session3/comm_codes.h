@@ -7,5 +7,7 @@ const constexpr char hub_a[2]  = {'h', 'a'};
 const constexpr char calibr_start[2] = {'C', 'i'};
 const constexpr char calibr_wait[2] = {'C', 'w'};
 
+const constexpr char sync_ask[2] = {'S', 'Q'};
+const constexpr char sync_ans[2] = {'S', 'A'};
 
 #endif //COM_CODES

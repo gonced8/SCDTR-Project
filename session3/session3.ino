@@ -5,11 +5,13 @@
 #include "can_comms.h"
 #include "dist_control.h"
 #include "calibr.h"
+#include "sync.h"
 
 /*----------------- Variables -----------------*/
 can_frame frame;
 uint8_t msg[data_bytes]; char code0, code1; float value;
 Calibration calibrator;
+Sync sync;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -53,10 +55,10 @@ void setup() {
     }
   */
 
+  sync.init(nodeId, nNodes);
   calibrator.start(nodeId, nNodes);
 
   Serial.println("Setup done.");
-  Serial.delay(1000);
 }
 
 void loop() {
@@ -64,10 +66,13 @@ void loop() {
   if (interrupt)  // there are new messages
     handleInterrupt();
 
-  if (calibrator.isOn())
+  if (sync.isOn())
+    sync.ask_node();
+
+  else if (calibrator.isOn())
     calibrator.run();
 
-  delay(500);
+  delay(10);
 }
 
 void handleInterrupt() {
@@ -93,6 +98,20 @@ void handleInterrupt() {
     Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);
 
     switch (code0) {
+      // Synchronize
+      case sync_ask[0]:
+        switch (code1) {
+          case sync_ask[1]:
+            sync.answer_node(frame);
+            break;
+
+          case sync_ans[1]:
+            sync.receive_answer(frame);
+            break;
+        }
+        break;
+
+      // Calibrate
       case calibr_start[0]:
         switch (code1) {
           case calibr_start[1]:
