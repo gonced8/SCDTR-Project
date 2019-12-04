@@ -3,11 +3,14 @@
 #ifndef DIST_CONTROL_H
 #define DIST_CONTROL_H
 
+#define maxNodes 5
+
 // System imports
 #include <Arduino.h>
 
 // Custom imports
 #include "hub.h"
+#include "can_comms.h"
 
 /*-------Constants declaration-------*/
 // Input/Output pins
@@ -21,29 +24,63 @@ constexpr float max_lux = 100;
 constexpr int Vcc = 5000;  // [mV]
 constexpr int R1 = 10;     // [KOhm]
 
-// Optimization
-extern const float infinity = 1.0 / 0.0;
+// Controller
+constexpr byte idShift = 2;
+constexpr uint32_t maskId = 0b11;
 
 /*-------Variable declaration-------*/
 // LDR calibration
-extern const float m[3];
-extern const float b[3];
-extern float k[3];
+extern const float m[maxNodes];
+extern const float b[maxNodes];
+extern float k[maxNodes];
 
 // Optimization
-extern float rho;
+extern const float infinity;
+
+/*---------Type definition----------*/
+class ledConsensus {
+  
+    byte nodeId;
+    byte nNodes;
+    float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float c_i;
+    float dNode[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float dNodep[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float dMat[maxNodes][maxNodes];
+    float dAvg[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float rho;
+    float y[maxNodes];
+    float o_i = 0;
+    float L_i = 0;
+    float f_i = 0;
+    bool on;
+    
+  private:
+    void ziCalc(float* zi);
+    float dotProd(float x[maxNodes], float y[maxNodes]);
+    float f_iCalc(float* d);
+    
+  public:
+    void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
+    void setLocalC(float c_i);
+    float getLocalC();
+    void setLocalO(float o_i);
+    float getLocalO();
+    void setLocalL(float L_i);
+    float getLocalL();
+    void getLocalDMean(float* dAvg);
+    float getLocalCost(float* d);
+    void getLocalD(float* d);
+    bool findMinima();
+    void send_duty_cycle();
+    void receive_duty_cycle(can_frame frame);
+    void calcMeanVector();
+    void calcLagrangeMult();
+    
+    void run();
+};
 
 /*--------Function propotypes--------*/
 float getLux(float measurement);
-void costCalc();
-float f_iCalc(float d[3]);
-float d_localavgCalc(float d[3]);
-float lanmultiplierCalc(float d[3]);
-float distanceCalc(float d[3]);
-float lagrangeCalc(float f_i, float d[3]);
-void ziCalc(float* zi);
-float dotProd(float x[3], float y[3]);
-bool findminima();
-
 
 #endif // DIST_CONTROL_H

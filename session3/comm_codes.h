@@ -13,4 +13,6 @@ const constexpr char sync_ans[2] = {'S', 'A'};
 const constexpr char ctrl_send = 'T';
 const constexpr char ctrl_recv = 'R';
 
+const constexpr char duty_cycle_code = '0';
+
 #endif //COM_CODES
