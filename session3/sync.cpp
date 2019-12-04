@@ -22,7 +22,6 @@ void Sync::ask_node() {
     if (current == nodeId)
       current++;
 
-    Serial.println(current);
     // Check if sync with all
     if (current > nNodes){
       on = false;
@@ -44,10 +43,8 @@ void Sync::ask_node() {
 void Sync::receive_answer(can_frame frame) {
   byte senderId = (frame.can_id >> shiftId) & idMask;
 
-  Serial.print("Sender "); Serial.println(senderId);
   if (senderId == current) {
     handshake = true;
-    Serial.print("Receveid answer from node "); Serial.println(senderId);
   }
 }
 
@@ -55,6 +52,5 @@ void Sync::answer_node(can_frame frame) {
   byte senderId = (frame.can_id >> shiftId) & idMask;
   uint8_t msg[data_bytes];
   encodeMessage(msg, sync_ans[0], sync_ans[1], 0);
-  write(current, 0, msg);
-  Serial.print("Wrote message to node "); Serial.println(senderId);
+  write(senderId, 0, msg);
 }

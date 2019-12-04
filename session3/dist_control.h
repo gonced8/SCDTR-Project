@@ -55,7 +55,7 @@ class LedConsensus {
     float o_i = 0;
     float L_i = 0;
     float f_i = 0;
-    byte state = 0;
+    bool firstPart;
     byte received;
     
   private:

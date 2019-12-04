@@ -33,6 +33,7 @@ MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]) {
   if (err != MCP2515::ERROR_OK)
     Serial.println("\t\tError: MCP2515 TX Buffers Full");
 
+  Serial.print((char)msg[0]); Serial.println((char)msg[1]);
   return err;
 }
 

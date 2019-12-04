@@ -54,9 +54,9 @@ void loop() {
   if (sync.isOn())
     sync.ask_node();
 
-  else if (calibrator.isOn()){
+  else if (calibrator.isOn())
     calibrator.run(ledConsensus);
-  }
+  
   
   else
     ledConsensus.run();
@@ -85,6 +85,7 @@ void handleNewMessages() {
 
     Serial.print("\tReceiving: ");
     Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);
+    Serial.print("From "); Serial.println((frame.can_id >> shiftId) & idMask);
 
     switch (code0) {
       // Synchronize
@@ -112,6 +113,10 @@ void handleNewMessages() {
             break;
         }
         break;
+
+      default:
+        if(code0>=duty_cycle_code || code0<duty_cycle_code+nNodes)
+          ledConsensus.receive_duty_cycle(frame);
     }
   }
 }

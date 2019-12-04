@@ -77,6 +77,6 @@ void Calibration::run(LedConsensus &ledConsensus) {
 }
 
 void Calibration::receiveAck() {
-  Serial.println("Ack");
+  Serial.print("Ack "); Serial.println(nAck);
   nAck++;
 }

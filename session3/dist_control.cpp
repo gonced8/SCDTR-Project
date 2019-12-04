@@ -5,7 +5,7 @@
 
 /*-------Variable definition--------*/
 // LDR calibration
-const float m[5] = {-0.67, -0.67, -0.67, 0, 0}; // LDR calibration
+const float m[5] = { -0.67, -0.67, -0.67, 0, 0}; // LDR calibration
 const float b[5] = {1.763, 1.763, 1.763, 0, 0}; // LDR calibration
 float k[5] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Gains
 
@@ -37,13 +37,17 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   c_i = _c_i;
   c[nodeId - 1] = c_i;
   memcpy(y, new_y, sizeof(y));
-  state = 0;
+  firstPart = true;
   received = 0;
   for (int i = 0; i < nNodes; i++) {
     for (int j = 0; j < nNodes; j++) {
       dMat[i][j] = 0;
     }
   }
+  if (deskOccupancy)
+    L_i = luxRefOcc;
+  else
+    L_i = luxRefUnocc;
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -115,6 +119,7 @@ void LedConsensus::calcNewO() {
   float measuredLux = getLux(measurement);
   float expectedLux = dotProd(k, dNodep);
   float new_o = measuredLux - expectedLux;
+  Serial.print("New o is "); Serial.println(new_o);
   setLocalO(new_o);
 }
 
@@ -248,11 +253,13 @@ void LedConsensus::calcLagrangeMult() {
 void LedConsensus::send_duty_cycle() {
   uint8_t msg[data_bytes];
 
+  Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
     encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
-    Serial.print("Sent ledConsensus "); Serial.println(dMat[nodeId - 1][i]);
+     Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
     write(0, 0, msg);
   }
+  Serial.println();
 }
 
 void LedConsensus::receive_duty_cycle(can_frame frame) {
@@ -263,32 +270,28 @@ void LedConsensus::receive_duty_cycle(can_frame frame) {
   memcpy(&value, frame.data + 1, sizeof(float));
 
   dMat[senderId - 1][index] = value;
+  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
 
   received++;
-  if (received == nNodes-1) {
-    received = 0;
-    state++;
-  }
 }
 
 void LedConsensus::run() {
-  switch (state) {
-    case 0:
-      findMinima();
-      send_duty_cycle();
-      state++;
-      break;
-
-    case 2:
-      //------ Does synhronization, fills the matrix dMat
-      // maybe do the LDR sampling after this synchronization??
-      calcNewO();
-      calcMeanVector();
-      calcLagrangeMult();
-      analogWrite(ledPin, dNode[nodeId-1]*255.0/100);
-      Serial.print("Wrote ledConsensus "); Serial.println(dNode[nodeId-1]);
-      // At this point, have local duty cycle reference at d_node[nodeId - 1]
-      state = 0;
-      break;
+  if (firstPart) {
+    findMinima();
+    send_duty_cycle();
+    firstPart = false;
+  }
+  else if (received >= (nNodes-1)*nNodes) {
+    received -= (nNodes-1)*nNodes;
+    //------ Does synhronization, fills the matrix dMat
+    // maybe do the LDR sampling after this synchronization??
+    Serial.println("Entered 2nd part");
+    calcNewO();
+    calcMeanVector();
+    calcLagrangeMult();
+    analogWrite(ledPin, dNode[nodeId - 1] * 255.0 / 100);
+    Serial.print("Wrote ledConsensus "); Serial.println(dNode[nodeId - 1]);
+    // At this point, have local duty cycle reference at d_node[nodeId - 1]
+    firstPart = true;
   }
 }
