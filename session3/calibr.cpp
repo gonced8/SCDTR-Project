@@ -8,7 +8,7 @@ bool Calibration::isOn() {
   return on;
 }
 
-void Calibration::start(byte id, byte n) {
+void Calibration::init(byte id, byte n) {
   nodeId = id;
   nNodes = n;
   on = true;
@@ -42,11 +42,19 @@ void Calibration::run() {
 
         if (nodeCounter == (nNodes + 1)) {
           on = false;
+          o_temp = getLux(measurements[0]);
+          for (byte i = 1; i <= nNodes; i++) {
+            k[i - 1] = getLux(measurements[i]) / max_lux;
+            Serial.println(k[i - 1]);
+          }
+          Serial.println("Calibration complete");
           return;
         }
 
         encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
+
         write(0, 0, msg);
+        Serial.println("Wrote wait message");
 
         action = measure;
         waiting = true;
@@ -68,5 +76,6 @@ void Calibration::run() {
 }
 
 void Calibration::receiveAck() {
+  Serial.println("Ack");
   nAck++;
 }

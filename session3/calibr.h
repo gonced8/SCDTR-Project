@@ -26,7 +26,7 @@ class Calibration {
     byte nAck;
   public:
     bool isOn();
-    void start(byte id, byte n);
+    void init(byte id, byte n);
     void run();
     void receiveAck();
 };

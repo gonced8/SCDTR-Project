@@ -12,6 +12,8 @@ can_frame frame;
 uint8_t msg[data_bytes]; char code0, code1; float value;
 Calibration calibrator;
 Sync sync;
+LedConsensus ledConsensus;
+float o_temp;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -36,27 +38,11 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  // See if this board is the hub
-  // hubFinder();
+  float y_init[maxNodes] = {1.0, 1.0, 1.0, 1.0, 1.0};
 
-  /*
-    // Convert measured values to lux
-    float measured_lux;
-
-    float disturbance = getLux(measurements[0]);
-    Serial.print("Value of disturbance"); Serial.print(" is equal to ");
-    Serial.println(disturbance);
-
-    for (int i = 1; i <= nNodes; i++) {
-    measured_lux = getLux(measurements[i]);
-    k[i - 1] = measured_lux / max_lux;
-    Serial.print("Value of k"); Serial.print(nodeId); Serial.print(i); Serial.print(" is equal to ");
-    Serial.println(k[i - 1]);
-    }
-  */
-
+  calibrator.init(nodeId, nNodes);
   sync.init(nodeId, nNodes);
-  calibrator.start(nodeId, nNodes);
+  ledConsensus.init(nodeId, nNodes, 1, 1, y_init);
 
   Serial.println("Setup done.");
 }
@@ -64,18 +50,21 @@ void setup() {
 void loop() {
   //Serial.print("interrupt "); Serial.println(interrupt);
   if (interrupt)  // there are new messages
-    handleInterrupt();
+    handleNewMessages();
 
   if (sync.isOn())
     sync.ask_node();
 
-  else if (calibrator.isOn())
+  else if (calibrator.isOn()){
     calibrator.run();
+  }
+  else
+    ledConsensus.run();
 
   delay(10);
 }
 
-void handleInterrupt() {
+void handleNewMessages() {
   interrupt = false;
 
   if (mcp2515_overflow) {
@@ -115,7 +104,7 @@ void handleInterrupt() {
       case calibr_start[0]:
         switch (code1) {
           case calibr_start[1]:
-            calibrator.start(nodeId, nNodes);
+            calibrator.init(nodeId, nNodes);
             break;
 
           case calibr_wait[1]:

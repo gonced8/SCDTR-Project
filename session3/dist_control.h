@@ -34,11 +34,13 @@ extern const float m[maxNodes];
 extern const float b[maxNodes];
 extern float k[maxNodes];
 
+extern float o_temp;
+
 // Optimization
 extern const float infinity;
 
 /*---------Type definition----------*/
-class ledConsensus {
+class LedConsensus {
   
     byte nodeId;
     byte nNodes;
@@ -53,7 +55,8 @@ class ledConsensus {
     float o_i = 0;
     float L_i = 0;
     float f_i = 0;
-    bool on;
+    byte state = 0;
+    byte received;
     
   private:
     void ziCalc(float* zi);
@@ -76,7 +79,6 @@ class ledConsensus {
     void receive_duty_cycle(can_frame frame);
     void calcMeanVector();
     void calcLagrangeMult();
-    
     void run();
 };
 
