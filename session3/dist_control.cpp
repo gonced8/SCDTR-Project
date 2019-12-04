@@ -250,6 +250,7 @@ void LedConsensus::send_duty_cycle() {
 
   for (int i = 0; i < nNodes; i++) {
     encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
+    Serial.print("Sent ledConsensus "); Serial.println(dMat[nodeId - 1][i]);
     write(0, 0, msg);
   }
 }
@@ -284,6 +285,8 @@ void LedConsensus::run() {
       calcNewO();
       calcMeanVector();
       calcLagrangeMult();
+      analogWrite(ledPin, dNode[nodeId-1]*255.0/100);
+      Serial.print("Wrote ledConsensus "); Serial.println(dNode[nodeId-1]);
       // At this point, have local duty cycle reference at d_node[nodeId - 1]
       state = 0;
       break;
