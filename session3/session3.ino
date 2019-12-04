@@ -13,7 +13,6 @@ uint8_t msg[data_bytes]; char code0, code1; float value;
 Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
-float o_temp;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -56,8 +55,9 @@ void loop() {
     sync.ask_node();
 
   else if (calibrator.isOn()){
-    calibrator.run();
+    calibrator.run(ledConsensus);
   }
+  
   else
     ledConsensus.run();
 

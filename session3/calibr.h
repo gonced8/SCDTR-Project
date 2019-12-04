@@ -18,7 +18,7 @@
 /*---------Type definition----------*/
 class Calibration {
     byte nNodes, nodeId, nodeCounter;
-    float *measurements = NULL;
+    int *measurements = NULL;
     bool on = false;
     enum Action {turn = 't', measure = 'm'};
     Action action;
@@ -27,7 +27,7 @@ class Calibration {
   public:
     bool isOn();
     void init(byte id, byte n);
-    void run();
+    void run(LedConsensus &ledConsensus);
     void receiveAck();
 };
 /*--------Function propotypes--------*/

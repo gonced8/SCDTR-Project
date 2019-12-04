@@ -17,9 +17,6 @@
 constexpr byte ledPin = 3;
 constexpr byte ldrPin = 10;
 
-// Maximum illuminance value
-constexpr float max_lux = 100;
-
 // Circuit parameters
 constexpr int Vcc = 5000;  // [mV]
 constexpr int R1 = 10;     // [KOhm]
@@ -34,7 +31,10 @@ extern const float m[maxNodes];
 extern const float b[maxNodes];
 extern float k[maxNodes];
 
-extern float o_temp;
+// Control related variables
+extern float luxRefUnocc;
+extern float luxRefOcc;
+extern bool deskOccupancy;
 
 // Optimization
 extern const float infinity;
@@ -74,6 +74,7 @@ class LedConsensus {
     void getLocalDMean(float* dAvg);
     float getLocalCost(float* d);
     void getLocalD(float* d);
+    void calcNewO();
     bool findMinima();
     void send_duty_cycle();
     void receive_duty_cycle(can_frame frame);

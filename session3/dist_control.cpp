@@ -9,6 +9,11 @@ const float m[5] = {-0.67, -0.67, -0.67, 0, 0}; // LDR calibration
 const float b[5] = {1.763, 1.763, 1.763, 0, 0}; // LDR calibration
 float k[5] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Gains
 
+// Control related variables
+float luxRefUnocc = 20;
+float luxRefOcc = 50;
+bool deskOccupancy = false;
+
 // Optimization
 const float infinity = 1.0 / 0.0;
 
@@ -29,7 +34,6 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   nodeId = _nodeId;
   nNodes = _nNodes;
   rho = _rho;
-  o_i = o_temp;
   c_i = _c_i;
   c[nodeId - 1] = c_i;
   memcpy(y, new_y, sizeof(y));
@@ -104,6 +108,14 @@ float LedConsensus::getLocalCost(float* d) {
 
 void LedConsensus::getLocalD(float* d) {
   memcpy(d, dNode, nNodes * sizeof(float));
+}
+
+void LedConsensus::calcNewO() {
+  int measurement = analogRead(ldrPin);
+  float measuredLux = getLux(measurement);
+  float expectedLux = dotProd(k, dNodep);
+  float new_o = measuredLux - expectedLux;
+  setLocalO(new_o);
 }
 
 bool LedConsensus::findMinima() {
@@ -269,6 +281,7 @@ void LedConsensus::run() {
     case 2:
       //------ Does synhronization, fills the matrix dMat
       // maybe do the LDR sampling after this synchronization??
+      calcNewO();
       calcMeanVector();
       calcLagrangeMult();
       // At this point, have local duty cycle reference at d_node[nodeId - 1]

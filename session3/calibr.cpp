@@ -20,10 +20,10 @@ void Calibration::init(byte id, byte n) {
   if (measurements != NULL)
     free(measurements);
 
-  measurements = (float *) malloc((nNodes + 1) * sizeof(float));
+  measurements = (int *) malloc((nNodes + 1) * sizeof(int));
 }
 
-void Calibration::run() {
+void Calibration::run(LedConsensus &ledConsensus) {
   uint8_t msg[data_bytes];
 
   if (waiting) {
@@ -42,9 +42,10 @@ void Calibration::run() {
 
         if (nodeCounter == (nNodes + 1)) {
           on = false;
-          o_temp = getLux(measurements[0]);
+          float o_temp = getLux(measurements[0]);
+          ledConsensus.setLocalO(o_temp);
           for (byte i = 1; i <= nNodes; i++) {
-            k[i - 1] = getLux(measurements[i]) / max_lux;
+            k[i - 1] = getLux(measurements[i]) / 100;
             Serial.println(k[i - 1]);
           }
           Serial.println("Calibration complete");
