@@ -15,7 +15,7 @@
 /*-------Constants declaration-------*/
 // Input/Output pins
 constexpr byte ledPin = 3;
-constexpr byte ldrPin = 10;
+constexpr byte ldrPin = A0;
 
 // Circuit parameters
 constexpr int Vcc = 5000;  // [mV]
@@ -57,6 +57,8 @@ class LedConsensus {
     float f_i = 0;
     bool firstPart;
     byte received;
+    unsigned long last_time;
+    const unsigned int timeout = 250;
     
   private:
     void ziCalc(float* zi);
@@ -84,6 +86,6 @@ class LedConsensus {
 };
 
 /*--------Function propotypes--------*/
-float getLux(float measurement);
+float getLux(int measurement);
 
 #endif // DIST_CONTROL_H

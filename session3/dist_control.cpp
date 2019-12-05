@@ -18,7 +18,7 @@ bool deskOccupancy = false;
 const float infinity = 1.0 / 0.0;
 
 /*--------Function definition--------*/
-float getLux(float measurement) {
+float getLux(int measurement) {
 
   float Vldr, Rldr, lux;
 
@@ -203,7 +203,7 @@ bool LedConsensus::findMinima() {
       //newd5[i-1] = zi[i-1]/rho - (k[i-1]*(o_i - L_i) + 100*k[i-1]*k[nodeId-1])/(knorm - k[nodeId -1]*k[nodeId -1]) - (1/rho)*(k[i-1]/(knorm - k[nodeId -1]*k[nodeId -1]))*(-dotProd(k, zi) + k[nodeId-1]*zi[nodeId-1]);
       newd5[i] = newd4[i] - (100 * k[i] * k[nodeId - 1]) / (knorm - k[nodeId - 1] * k[nodeId - 1]);
     else
-      newd5[i] = 0;
+      newd5[i] = 100;
   }
   if (f_iCalc(newd5) != infinity) // Solution is feasible
     feasible[4] = true;
@@ -256,7 +256,7 @@ void LedConsensus::send_duty_cycle() {
   Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
     encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
-     Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
+    Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
     write(0, 0, msg);
   }
   Serial.println();
@@ -265,7 +265,7 @@ void LedConsensus::send_duty_cycle() {
 void LedConsensus::receive_duty_cycle(can_frame frame) {
   byte senderId = (frame.can_id >> idShift) & maskId;
 
-  byte index = frame.data[0];
+  byte index = (byte)(frame.data[0] - duty_cycle_code);
   float value;
   memcpy(&value, frame.data + 1, sizeof(float));
 
@@ -276,13 +276,17 @@ void LedConsensus::receive_duty_cycle(can_frame frame) {
 }
 
 void LedConsensus::run() {
+  unsigned long current_time = millis();
+
   if (firstPart) {
     findMinima();
     send_duty_cycle();
     firstPart = false;
+    last_time = current_time;
   }
-  else if (received >= (nNodes-1)*nNodes) {
-    received -= (nNodes-1)*nNodes;
+  else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
+    // received -= (nNodes-1)*nNodes;
+    received = 0;   // IMPROVE
     //------ Does synhronization, fills the matrix dMat
     // maybe do the LDR sampling after this synchronization??
     Serial.println("Entered 2nd part");
