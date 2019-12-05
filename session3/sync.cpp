@@ -16,27 +16,14 @@ bool Sync::isOn() {
 void Sync::ask_node() {
   unsigned long curr_time = millis();
 
-  if (handshake) {
-    current++;
-    // Doesn't count with itself
-    if (current == nodeId)
-      current++;
-
-    // Check if sync with all
-    if (current > nNodes){
-      on = false;
-      Serial.println("Synchronization complete.");
-      return;
-    }
-  }
-  else if (curr_time - last_time < timeout) {
+  if (!handshake & (curr_time - last_time < timeout)) {
     return;
   }
 
   uint8_t msg[data_bytes];
   encodeMessage(msg, sync_ask[0], sync_ask[1], 0);
-  write(current, 0, msg);
   handshake = false;
+  write(current, 0, msg);
   last_time = millis();
 }
 
@@ -45,6 +32,18 @@ void Sync::receive_answer(can_frame frame) {
 
   if (senderId == current) {
     handshake = true;
+
+    current++;
+    // Doesn't count with itself
+    if (current == nodeId)
+      current++;
+
+    // Check if sync with all
+    if (current > nNodes) {
+      on = false;
+      Serial.println("Synchronization complete.");
+      return;
+    }
   }
 }
 

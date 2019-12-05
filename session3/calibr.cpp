@@ -16,11 +16,6 @@ void Calibration::init(byte id, byte n) {
   action = turn;
   nodeCounter = 0;
   nAck = 0;
-
-  if (measurements != NULL)
-    free(measurements);
-
-  measurements = (int *) malloc((nNodes + 1) * sizeof(int));
 }
 
 void Calibration::run(LedConsensus &ledConsensus) {
@@ -40,20 +35,23 @@ void Calibration::run(LedConsensus &ledConsensus) {
         else
           analogWrite(ledPin, 0);
 
-        if (nodeCounter == (nNodes + 1)) {
+        // Check if end calibration
+        if (nodeCounter > nNodes) {
           on = false;
+
           float o_temp = getLux(measurements[0]);
           ledConsensus.setLocalO(o_temp);
+
           for (byte i = 1; i <= nNodes; i++) {
             k[i - 1] = getLux(measurements[i]) / 100;
             Serial.println(k[i - 1]);
           }
+
           Serial.println("Calibration complete");
           return;
         }
 
         encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
-
         write(0, 0, msg);
         Serial.println("Wrote wait message");
 
@@ -66,6 +64,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
 
         encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
         write(0, 0, msg);
+        Serial.println("Wrote wait message");
 
         nodeCounter++;
         action = turn;

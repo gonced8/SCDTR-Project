@@ -39,8 +39,8 @@ void setup() {
 
   float y_init[maxNodes] = {1.0, 1.0, 1.0, 1.0, 1.0};
 
-  calibrator.init(nodeId, nNodes);
   sync.init(nodeId, nNodes);
+  calibrator.init(nodeId, nNodes);
   ledConsensus.init(nodeId, nNodes, 1, 1, y_init);
 
   Serial.println("Setup done.");
@@ -56,8 +56,7 @@ void loop() {
 
   else if (calibrator.isOn())
     calibrator.run(ledConsensus);
-  
-  
+
   else
     ledConsensus.run();
 
@@ -115,7 +114,7 @@ void handleNewMessages() {
         break;
 
       default:
-        if(code0>=duty_cycle_code || code0<duty_cycle_code+nNodes)
+        if (code0 >= duty_cycle_code || code0 < duty_cycle_code + nNodes)
           ledConsensus.receive_duty_cycle(frame);
     }
   }

@@ -12,13 +12,15 @@
 #include "can_comms.h"
 #include "dist_control.h"
 
+#define maxNodes 5
+
 /*-------Variable declaration-------*/
 
 
 /*---------Type definition----------*/
 class Calibration {
     byte nNodes, nodeId, nodeCounter;
-    int *measurements = NULL;
+    int measurements[maxNodes];
     bool on = false;
     enum Action {turn = 't', measure = 'm'};
     Action action;
