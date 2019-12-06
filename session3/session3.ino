@@ -80,7 +80,7 @@ void handleNewMessages() {
   }
 
   while ( cf_stream.get(frame) ) {
-    decodeMessage(frame, senderId, code, value);
+    decodeMessage(frame, senderId, code, &value);
 
     Serial.print("\tReceiving: ");
     Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);

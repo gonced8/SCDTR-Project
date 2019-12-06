@@ -267,7 +267,7 @@ void LedConsensus::receive_duty_cycle(can_frame frame) {
 
   byte index = (byte)(frame.data[0] - duty_cycle_code);
   float value;
-  memcpy(&value, frame.data + 1, sizeof(float));
+  memcpy(&value, frame.data + 2, sizeof(float));
 
   dMat[senderId - 1][index] = value;
   Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);

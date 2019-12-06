@@ -36,7 +36,7 @@ extern volatile can_frame_stream cf_stream; //the object to use
 MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]);
 MCP2515::ERROR read(uint8_t msg[data_bytes]);
 void setMasksFilters();
-void decodeMessage(can_frame frame, byte &senderId, char *code, float &value);
+void decodeMessage(can_frame frame, byte &senderId, char *code, float *value);
 void encodeMessage(uint8_t msg[data_bytes], char code0, char code1, float value);
 void barrier();
 void irqHandler();
