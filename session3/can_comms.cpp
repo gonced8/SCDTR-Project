@@ -60,10 +60,11 @@ void setMasksFilters() {
   mcp2515.setFilter(MCP2515::RXF3, 0, filt1);
 }
 
-void decodeMessage(uint8_t msg[data_bytes], char &code0, char &code1, float &value) {
-  code0 = msg[0];
-  code1 = msg[1];
-  memcpy(&value, &(msg[2]), sizeof(float));
+void decodeMessage(can_frame frame, byte &senderId, char *code, float &value) {
+  senderId = (frame.can_id >> shiftId) & mask;
+  code[0] = frame.data[0];
+  code[1] = frame.data[1];
+  memcpy(&value, &(frame.data[2]), sizeof(float));
 }
 
 void encodeMessage(uint8_t msg[data_bytes], char code0, char code1, float value) {

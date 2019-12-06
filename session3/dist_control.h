@@ -21,9 +21,6 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr int R1 = 10;     // [KOhm]
 
-// Controller
-constexpr byte idShift = 2;
-constexpr uint32_t maskId = 0b11;
 
 /*-------Variable declaration-------*/
 // LDR calibration

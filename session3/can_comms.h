@@ -19,6 +19,7 @@ constexpr uint32_t mask = 0x00000003;       // To check the ID
 constexpr uint32_t code_mask = 0x0000003F;  // To check the mask
 constexpr byte masksize = 6;
 constexpr byte id_counter_max = 32;
+constexpr byte shiftId = 2;
 
 /*-------Variable declaration-------*/
 // CAN Bus
@@ -35,7 +36,7 @@ extern volatile can_frame_stream cf_stream; //the object to use
 MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]);
 MCP2515::ERROR read(uint8_t msg[data_bytes]);
 void setMasksFilters();
-void decodeMessage(uint8_t msg[data_bytes], char &code0, char &code1, float &value);
+void decodeMessage(can_frame frame, byte &senderId, char *code, float &value);
 void encodeMessage(uint8_t msg[data_bytes], char code0, char code1, float value);
 void barrier();
 void irqHandler();

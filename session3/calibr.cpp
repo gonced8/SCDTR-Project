@@ -15,16 +15,36 @@ void Calibration::init(byte id, byte n) {
   waiting = false;
   action = turn;
   nodeCounter = 0;
-  nAck = 0;
+  for (byte i = 0; i < nNodes; i++) {
+    handshakes[i] = false;
+  }
+  nHand = 0;
 }
 
 void Calibration::run(LedConsensus &ledConsensus) {
   uint8_t msg[data_bytes];
 
   if (waiting) {
-    if (nAck >= (nNodes - 1)) {
-      nAck -= (nNodes - 1);
+    // Successful handshakes
+    if (nHand == nNodes - 1) {
       waiting = false;
+
+      // Reset handshakes array
+      for (byte i = 0; i < nNodes; i++) {
+        handshakes[i] = false;
+      }
+      nHand = 0;
+    }
+    // Missing handshakes
+    else {
+      unsigned long curr_time = millis();
+      // Timed out, send again
+      if (curr_time - last_time >= timeout) {
+        encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
+        write(0, 0, msg);
+        last_time = curr_time;
+        Serial.println("Wrote wait message");
+      }
     }
   }
   else {
@@ -51,31 +71,38 @@ void Calibration::run(LedConsensus &ledConsensus) {
           return;
         }
 
-        encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
-        write(0, 0, msg);
-        Serial.println("Wrote wait message");
-
         action = measure;
-        waiting = true;
         break;
 
       case measure:
+        delay(500);
         measurements[nodeCounter] = analogRead(ldrPin);
-
-        encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
-        write(0, 0, msg);
-        Serial.println("Wrote wait message");
 
         nodeCounter++;
         action = turn;
-        waiting = true;
         break;
     }
+
+    encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
+    write(0, 0, msg);
+    waiting = true;
+    last_time = millis();
+    Serial.println("Wrote wait message");
   }
   return;
 }
 
-void Calibration::receiveAck() {
-  Serial.print("Ack "); Serial.println(nAck);
-  nAck++;
+void Calibration::receive_answer(byte senderId) {
+  if (!handshakes[senderId - 1]) {
+    nHand++;
+    handshakes[senderId - 1] = true;
+  }
+}
+
+void Calibration::send_answer(byte senderId) {
+  uint8_t msg[data_bytes];
+  encodeMessage(msg, calibr_answer[0], calibr_answer[1], 0);
+  write(senderId, 0, msg);
+
+  Serial.print("Sync: Answered node "); Serial.println(senderId);
 }

@@ -9,7 +9,10 @@
 
 /*----------------- Variables -----------------*/
 can_frame frame;
-uint8_t msg[data_bytes]; char code0, code1; float value;
+uint8_t msg[data_bytes];
+char code[2];
+float value;
+byte senderId;
 Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
@@ -77,21 +80,18 @@ void handleNewMessages() {
   }
 
   while ( cf_stream.get(frame) ) {
-    for (int i = 0; i < data_bytes; i++)
-      msg[i] = frame.data[i];
-
-    decodeMessage(msg, code0, code1, value);
+    decodeMessage(frame, senderId, code, value);
 
     Serial.print("\tReceiving: ");
     Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);
-    Serial.print("From "); Serial.println((frame.can_id >> shiftId) & idMask);
+    Serial.print("From "); Serial.println(senderId);
 
-    switch (code0) {
+    switch (code[0]) {
       // Synchronize
       case sync_ask[0]:
-        switch (code1) {
+        switch (code[1]) {
           case sync_ask[1]:
-            sync.answer_node(frame);
+            sync.answer_node(senderId);
             break;
 
           case sync_ans[1]:
@@ -102,19 +102,23 @@ void handleNewMessages() {
 
       // Calibrate
       case calibr_start[0]:
-        switch (code1) {
+        switch (code[1]) {
           case calibr_start[1]:
             calibrator.init(nodeId, nNodes);
             break;
 
+          case calibr_answer[1]:
+            calibrator.receive_answer(senderId);
+            break;
+
           case calibr_wait[1]:
-            calibrator.receiveAck();
+            calibrator.send_answer(senderId);
             break;
         }
         break;
 
       default:
-        if (code0 >= duty_cycle_code || code0 < duty_cycle_code + nNodes)
+        if (code[0] >= duty_cycle_code || code[0] < duty_cycle_code + nNodes)
           ledConsensus.receive_duty_cycle(frame);
     }
   }

@@ -25,12 +25,16 @@ class Calibration {
     enum Action {turn = 't', measure = 'm'};
     Action action;
     bool waiting;
-    byte nAck;
+    bool handshakes[maxNodes];
+    byte nHand;
+    unsigned long last_time;
+    const unsigned int timeout = 250;
   public:
     bool isOn();
     void init(byte id, byte n);
     void run(LedConsensus &ledConsensus);
-    void receiveAck();
+    void receive_answer(byte senderId);
+    void send_answer(byte senderId);
 };
 /*--------Function propotypes--------*/
 

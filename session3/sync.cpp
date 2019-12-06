@@ -32,7 +32,7 @@ void Sync::ask_node() {
 }
 
 void Sync::receive_answer(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & idMask;
+  byte senderId = (frame.can_id >> shiftId) & mask;
 
   Serial.print("Sync: Current "); Serial.print(current);
   Serial.print(". Received from node "); Serial.println(senderId);
@@ -54,8 +54,7 @@ void Sync::receive_answer(can_frame frame) {
   }
 }
 
-void Sync::answer_node(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & idMask;
+void Sync::answer_node(byte senderId) {
   uint8_t msg[data_bytes];
   encodeMessage(msg, sync_ans[0], sync_ans[1], 0);
   write(senderId, 0, msg);

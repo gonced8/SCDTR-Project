@@ -263,7 +263,7 @@ void LedConsensus::send_duty_cycle() {
 }
 
 void LedConsensus::receive_duty_cycle(can_frame frame) {
-  byte senderId = (frame.can_id >> idShift) & maskId;
+  byte senderId = (frame.can_id >> shiftId) & mask;
 
   byte index = (byte)(frame.data[0] - duty_cycle_code);
   float value;
