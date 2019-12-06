@@ -210,22 +210,20 @@ bool LedConsensus::findMinima() {
 
   // See the minimum cost between the feasible possibilities
   float lagrangean_aux = 0;
-  float ft = 0;
-  bool first = true;
+  float ft = infinity;
   for (byte i = 0; i < 5; i++) {  // this 5 is fixed
     if (feasible[i]) {
       lagrangean_aux = (rho / 2) * dotProd(dvec_pointer[i], dvec_pointer[i]) - dotProd(dvec_pointer[i], zi);
-      if (first || lagrangean_aux < ft) {
+      if (lagrangean_aux < ft) {
         ft = lagrangean_aux;
         memcpy(dNodep, dNode, nNodes * sizeof(float));
         memcpy(dNode, dvec_pointer[i], nNodes * sizeof(float));
         memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
-        first = false;
       }
     }
   }
 
-  if (first)
+  if (ft == infinity)
     return false;    // Unfeasible
 
   return true;

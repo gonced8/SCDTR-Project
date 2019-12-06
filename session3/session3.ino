@@ -40,7 +40,7 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  float y_init[maxNodes] = {1.0, 1.0, 1.0, 1.0, 1.0};
+  float y_init[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
