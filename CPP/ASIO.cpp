@@ -13,10 +13,8 @@ using namespace boost::asio;
 using boost::asio::chrono::seconds;
 //BEGIN CLASS ASYNC_CONSOLE
 class async_console {
-	//boost::asio::io_context io;
-	//boost::asio::steady_timer tim {io};
 	boost::asio::steady_timer tim;
-	//boost::asio::serial_port sp {io};
+	boost::asio::serial_port sp;
 	boost::asio::posix::stream_descriptor stm_desc;
 	boost::asio::streambuf pccomms_buff;
 	boost::asio::streambuf arduinocomms_buff;
@@ -30,6 +28,7 @@ public:
 		}
 		async_console (boost::asio::io_context &io)
 		: tim {io},
+		  sp {io},
 		  stm_desc {io, ::dup(STDIN_FILENO)},
 		  pccomms_buff {1024},
 		  arduinocomms_buff{4}
