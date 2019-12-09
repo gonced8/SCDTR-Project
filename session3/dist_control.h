@@ -21,7 +21,7 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr int R1 = 10;     // [KOhm]
 
-
+constexpr int maxIters = 10;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -36,9 +36,28 @@ extern bool deskOccupancy;
 // Optimization
 extern const float infinity;
 
+// Actuation
+extern float measuredLux;
+extern float dutyCycle;
+
 /*---------Type definition----------*/
 class LedConsensus {
+  class ConsensusComms {
+      LedConsensus& parent;
+      byte current;
+      bool waiting;
+      bool handshake;
+      unsigned long last_time; 
+      const unsigned int timeout = 100;
   
+    public:
+      void init(LedConsensus& parent); 
+      void turnOn();
+      void tellStart();
+      void rcvAns(can_frame frame);
+      void rcvStart(byte senderId); 
+  };
+
     byte nodeId;
     byte nNodes;
     float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
@@ -56,11 +75,17 @@ class LedConsensus {
     byte received;
     unsigned long last_time;
     const unsigned int timeout = 250;
+    int remainingIters;
+    bool waiting = false;
+    ConsensusComms consensusComms;
     
   private:
     void ziCalc(float* zi);
     float dotProd(float x[maxNodes], float y[maxNodes]);
     float f_iCalc(float* d);
+    bool findMinima();
+    void calcMeanVector();
+    void calcLagrangeMult();
     
   public:
     void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
@@ -71,18 +96,19 @@ class LedConsensus {
     void setLocalL(float L_i);
     float getLocalL();
     void getLocalDMean(float* dAvg);
-    float getLocalCost(float* d);
     void getLocalD(float* d);
     void calcNewO();
-    bool findMinima();
+    float calcExpectedLux();
     void send_duty_cycle();
     void receive_duty_cycle(can_frame frame);
-    void calcMeanVector();
-    void calcLagrangeMult();
+    void startNew();
+    bool finished();
     void run();
 };
 
 /*--------Function propotypes--------*/
 float getLux(int measurement);
+void calcDisturbance(LedConsensus &ledConsensus, float measured);
+
 
 #endif // DIST_CONTROL_H

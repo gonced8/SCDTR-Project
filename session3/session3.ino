@@ -40,13 +40,12 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  float y_init[maxNodes] = {1.0, 1.0, 1.0, 1.0, 1.0};
+  float y_init[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
   ledConsensus.init(nodeId, nNodes, 1, 1, y_init);
 
-  Serial.println("Setup done.");
 }
 
 void loop() {
@@ -60,8 +59,18 @@ void loop() {
   else if (calibrator.isOn())
     calibrator.run(ledConsensus);
 
-  else
-    ledConsensus.run();
+  else {
+    if (ledConsensus.finished()) {
+      // THIS WRITE WILL LATER BE IN THE PID! disturbance calculated for previous dutyCycle
+      measuredLux = getLux(analogRead(ldrPin));
+      calcDisturbance(ledConsensus, measuredLux);
+      analogWrite(ledPin, dutyCycle * 255.0 / 100);
+      Serial.print("Wrote to led "); Serial.println(dutyCycle);
+      //////
+    } else {
+      ledConsensus.run();
+    }
+  }
 
   delay(10);
 }

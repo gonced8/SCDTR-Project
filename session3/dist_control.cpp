@@ -1,6 +1,7 @@
 // Implementation of distributed control related functions
 
 #include <Arduino.h>
+#include <math.h>
 #include "dist_control.h"
 
 /*-------Variable definition--------*/
@@ -17,6 +18,10 @@ bool deskOccupancy = false;
 // Optimization
 const float infinity = 1.0 / 0.0;
 
+// Actuation
+float measuredLux = 0;
+float dutyCycle = 0;
+
 /*--------Function definition--------*/
 float getLux(int measurement) {
 
@@ -28,6 +33,84 @@ float getLux(int measurement) {
   lux = pow(10, (float) (log10(Rldr) - b[nodeId - 1]) / m[nodeId - 1]);
 
   return lux;
+}
+
+void calcDisturbance(LedConsensus &ledConsensus, float measured) {
+  float new_o = measured - ledConsensus.calcExpectedLux();
+  Serial.print("New o is "); Serial.println(new_o);
+  if (abs(new_o - ledConsensus.getLocalO()) > 5) {
+    ledConsensus.setLocalO(new_o);
+    ledConsensus.startNew();
+    
+    Serial.println("Will enter consensus again");
+  }
+}
+
+void LedConsensus::ConsensusComms::init(LedConsensus& _parent) {
+  parent = _parent;
+  current = 1;
+  if (current == nodeId)
+    current++;
+  waiting = false;
+  handshake = true;
+  last_time = millis();
+}
+
+void LedConsensus::ConsensusComms::turnOn() {
+  waiting = true;
+}
+
+void LedConsensus::ConsensusComms::tellStart() {
+  unsigned long curr_time = millis();
+
+  if (curr_time - last_time < timeout) {
+    return;
+  }
+
+  uint8_t msg[data_bytes];
+  encodeMessage(msg, consensus_tell[0], consensus_tell[1], 0);
+  handshake = false;
+  write(current, 0, msg);
+  last_time = millis();
+
+  Serial.print("Consensus: Asked node "); Serial.println(current);
+}
+
+void LedConsensus::ConsensusComms::rcvAns(can_frame frame) {
+  byte senderId = (frame.can_id >> shiftId) & mask;
+
+  Serial.print("Consensus: Current "); Serial.print(current);
+  Serial.print(". Received from node "); Serial.println(senderId);
+
+  if (senderId == current) {
+    handshake = true;
+
+    current++;
+    // Doesn't count with itself
+    if (current == nodeId)
+      current++;
+
+    // Check if sync with all
+    if (current > nNodes) {
+      // reset settings
+      waiting = false;
+      handshake = true;
+      current = 1;
+      if (current == nodeId)
+        current++;
+      Serial.println("Consensus sync complete.");
+      return;
+    }
+  }
+}
+
+void LedConsensus::ConsensusComms::rcvStart(byte senderId) {
+  uint8_t msg[data_bytes];
+  encodeMessage(msg, consensus_rcv[0], consensus_rcv[1], 0);
+  write(senderId, 0, msg);
+  if (parent.finished())
+    parent.startNew();
+  Serial.print("Consensus: Answered node "); Serial.println(senderId);
 }
 
 void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float* new_y) {
@@ -45,9 +128,10 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
     }
   }
   if (deskOccupancy)
-    L_i = luxRefOcc;
+    setLocalL(luxRefOcc);
   else
-    L_i = luxRefUnocc;
+    setLocalL(luxRefUnocc);
+  consensusComms.init(*this);
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -66,7 +150,7 @@ float LedConsensus::dotProd(float x[5], float y[5]) {
 
 float LedConsensus::f_iCalc(float* d) {
 
-  if (d[nodeId - 1] <= 100 && d[nodeId - 1] >= 0 && getLocalCost(d) >= L_i - o_i)
+  if (d[nodeId - 1] <= 100 && d[nodeId - 1] >= 0 && dotProd(k, d) >= L_i - o_i)
     return c_i * d[nodeId - 1];
   else
     return infinity;
@@ -101,26 +185,26 @@ void LedConsensus::getLocalDMean(float* new_dAvg) {
   memcpy(new_dAvg, dAvg, nNodes * sizeof(float));
 }
 
-float LedConsensus::getLocalCost(float* d) {
-  float aux_sum = 0;
-
-  for (byte i = 0; i < nNodes; i++)
-    aux_sum = aux_sum + k[i] * d[i];
-
-  return aux_sum;
-}
-
 void LedConsensus::getLocalD(float* d) {
   memcpy(d, dNode, nNodes * sizeof(float));
 }
 
+bool LedConsensus::finished() {
+  return remainingIters == 0;
+}
+
+float LedConsensus::calcExpectedLux() {
+  return dotProd(k, dNode);
+}
+
 void LedConsensus::calcNewO() {
-  int measurement = analogRead(ldrPin);
-  float measuredLux = getLux(measurement);
-  float expectedLux = dotProd(k, dNodep);
-  float new_o = measuredLux - expectedLux;
-  Serial.print("New o is "); Serial.println(new_o);
-  setLocalO(new_o);
+  float new_o = getLux(analogRead(ldrPin)) - dotProd(k, dNodep);
+  Serial.print("New o inside consensus is "); Serial.println(new_o);
+  o_i = new_o;
+}
+
+void LedConsensus::startNew() {
+  remainingIters = maxIters;
 }
 
 bool LedConsensus::findMinima() {
@@ -129,10 +213,7 @@ bool LedConsensus::findMinima() {
   // bool: true if feasible, false if unfeasible
   float newd[5];
   float zi[5];
-  float knorm = 0; // TODO: put this constant global and calculated after each calibration
-
-  for (byte i = 0; i < nNodes; i++)
-    knorm = knorm + k[i] * k[i];
+  float knorm = dotProd(k, k); 
 
   // First we will try to find the solution in the interior
   for (byte i = 0; i < nNodes; i++) {
@@ -143,7 +224,7 @@ bool LedConsensus::findMinima() {
   }
   // Now we check if this first solution is feasible
   if (f_iCalc(newd) != infinity) { // Solution is feasible
-    memcpy(dNodep, dNode, nNodes * sizeof(float));
+    //memcpy(dNodep, dNode, nNodes * sizeof(float));
     memcpy(dNode, newd, nNodes * sizeof(float));
     memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
     return true;
@@ -200,7 +281,6 @@ bool LedConsensus::findMinima() {
   //Solution 5
   for (byte i = 0; i < nNodes; i++) {
     if (i != nodeId - 1)
-      //newd5[i-1] = zi[i-1]/rho - (k[i-1]*(o_i - L_i) + 100*k[i-1]*k[nodeId-1])/(knorm - k[nodeId -1]*k[nodeId -1]) - (1/rho)*(k[i-1]/(knorm - k[nodeId -1]*k[nodeId -1]))*(-dotProd(k, zi) + k[nodeId-1]*zi[nodeId-1]);
       newd5[i] = newd4[i] - (100 * k[i] * k[nodeId - 1]) / (knorm - k[nodeId - 1] * k[nodeId - 1]);
     else
       newd5[i] = 100;
@@ -210,31 +290,25 @@ bool LedConsensus::findMinima() {
 
   // See the minimum cost between the feasible possibilities
   float lagrangean_aux = 0;
-  float ft = 0;
-  bool first = true;
+  float ft = infinity;
   for (byte i = 0; i < 5; i++) {  // this 5 is fixed
     if (feasible[i]) {
       lagrangean_aux = (rho / 2) * dotProd(dvec_pointer[i], dvec_pointer[i]) - dotProd(dvec_pointer[i], zi);
-      if (first || lagrangean_aux < ft) {
+      if (lagrangean_aux <= ft) {
         ft = lagrangean_aux;
-        memcpy(dNodep, dNode, nNodes * sizeof(float));
         memcpy(dNode, dvec_pointer[i], nNodes * sizeof(float));
         memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
-        first = false;
       }
     }
   }
 
-  if (first)
+  if (ft == infinity)
     return false;    // Unfeasible
-
   return true;
 }
 
-
 void LedConsensus::calcMeanVector() {
   float aux = 0;
-
   for (byte j = 0; j < nNodes; j++) {
     for (byte i = 0; i < nNodes; i++) {
       aux = aux + dMat[i][j];
@@ -253,13 +327,13 @@ void LedConsensus::calcLagrangeMult() {
 void LedConsensus::send_duty_cycle() {
   uint8_t msg[data_bytes];
 
-  Serial.print("Sent ledConsensus ");
+  //Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
     encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
-    Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
+    //Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
     write(0, 0, msg);
   }
-  Serial.println();
+  //Serial.println();
 }
 
 void LedConsensus::receive_duty_cycle(can_frame frame) {
@@ -270,32 +344,38 @@ void LedConsensus::receive_duty_cycle(can_frame frame) {
   memcpy(&value, frame.data + 2, sizeof(float));
 
   dMat[senderId - 1][index] = value;
-  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
+  //Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
 
   received++;
 }
 
 void LedConsensus::run() {
-  unsigned long current_time = millis();
-
-  if (firstPart) {
-    findMinima();
-    send_duty_cycle();
-    firstPart = false;
-    last_time = current_time;
+  if (waiting) {
+    tellStart();
   }
-  else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
-    // received -= (nNodes-1)*nNodes;
-    received = 0;   // IMPROVE
-    //------ Does synhronization, fills the matrix dMat
-    // maybe do the LDR sampling after this synchronization??
-    Serial.println("Entered 2nd part");
-    calcNewO();
-    calcMeanVector();
-    calcLagrangeMult();
-    analogWrite(ledPin, dNode[nodeId - 1] * 255.0 / 100);
-    Serial.print("Wrote ledConsensus "); Serial.println(dNode[nodeId - 1]);
-    // At this point, have local duty cycle reference at d_node[nodeId - 1]
-    firstPart = true;
+  else {
+    unsigned long current_time = millis();
+    if (firstPart) {
+      findMinima();
+      send_duty_cycle();
+      firstPart = false;
+      last_time = current_time;
+    }
+    else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
+      // received -= (nNodes-1)*nNodes;
+      Serial.print("Timed out: "); Serial.println(current_time - last_time >= timeout);
+      received = 0;   // IMPROVE
+      calcMeanVector();
+      calcLagrangeMult();
+      firstPart = true;
+  
+      calcNewO();
+      if (remainingIters == 1) {  // last iteration, update duty cycle
+        Serial.println("Updated dutyCycle at last iteration");
+        memcpy(dNodep, dNode, nNodes * sizeof(float));
+        dutyCycle = dNode[nodeId - 1];
+      }
+      remainingIters--;
+    }
   }
 }
