@@ -76,7 +76,7 @@ class LedConsensus {
     void calcNewO();
     bool findMinima();
     void send_duty_cycle();
-    void receive_duty_cycle(can_frame frame);
+    void receive_duty_cycle(byte senderId, byte code, float value);
     void calcMeanVector();
     void calcLagrangeMult();
     void run();

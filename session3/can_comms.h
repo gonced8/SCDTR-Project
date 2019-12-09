@@ -14,17 +14,16 @@
 #include "hub.h"
 
 /*-------Constants declaration-------*/
-constexpr byte data_bytes = 6;
-constexpr uint32_t mask = 0x00000003;       // To check the ID
-constexpr uint32_t code_mask = 0x0000003F;  // To check the mask
-constexpr byte masksize = 6;
-constexpr byte id_counter_max = 32;
-constexpr byte shiftId = 2;
+constexpr byte data_bytes = 4;
+constexpr uint32_t mask = 0b11;       // To check the ID
+constexpr uint32_t code_mask = 0b1111111;  // To mask the code
+constexpr byte shiftCode = 4;
+constexpr byte shiftToId = 2;
+constexpr byte shiftFromId = 0;
 
 /*-------Variable declaration-------*/
 // CAN Bus
 extern MCP2515 mcp2515;
-extern byte id_counter;
 
 /*---------Type definition----------*/
 extern volatile bool interrupt; //notification flag for ISR and loop()
@@ -32,13 +31,16 @@ extern volatile bool mcp2515_overflow;
 extern volatile bool arduino_overflow;
 extern volatile can_frame_stream cf_stream; //the object to use
 
+union my_can_msg {
+  uint32_t value;
+  uint8_t bytes[data_bytes];
+};
+
 /*--------Function propotypes--------*/
-MCP2515::ERROR write(byte to, byte priority,  uint8_t msg[data_bytes]);
+MCP2515::ERROR write(byte to, byte code, float value);
 MCP2515::ERROR read(uint8_t msg[data_bytes]);
 void setMasksFilters();
-void decodeMessage(can_frame frame, byte &senderId, char *code, float *value);
-void encodeMessage(uint8_t msg[data_bytes], char code0, char code1, float value);
-void barrier();
+void decodeMessage(can_frame frame, byte &senderId, char &code, float &value);
 void irqHandler();
 
 #endif // CAN_COMMS_H

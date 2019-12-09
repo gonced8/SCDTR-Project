@@ -253,24 +253,18 @@ void LedConsensus::send_duty_cycle() {
 
   Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
-    encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
+    write(0, duty_cycle_code + i, dMat[nodeId - 1][i]);
     Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
-    write(0, 0, msg);
   }
   Serial.println();
 }
 
-void LedConsensus::receive_duty_cycle(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & mask;
-
-  byte index = (byte)(frame.data[0] - duty_cycle_code);
-  float value;
-  memcpy(&value, frame.data + 2, sizeof(float));
-
+void LedConsensus::receive_duty_cycle(byte senderId, byte code, float value) {
+  byte index = code - duty_cycle_code;
   dMat[senderId - 1][index] = value;
-  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
-
   received++;
+  
+  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
 }
 
 void LedConsensus::run() {
