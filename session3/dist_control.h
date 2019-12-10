@@ -85,12 +85,12 @@ class LedConsensus {
     void calcNewO();
     float calcExpectedLux();
     void send_duty_cycle();
-    void receive_duty_cycle(can_frame frame);
+    void receive_duty_cycle(byte senderId, byte code, float value);
     void startCounter();
     bool finished();
     void tellOthers();
     void tellStart();
-    void rcvAns(can_frame frame);
+    void rcvAns(byte senderId);
     void rcvStart(byte senderId); 
     void run();
 };

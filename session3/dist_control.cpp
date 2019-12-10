@@ -56,19 +56,14 @@ void LedConsensus::tellStart() {
   if (curr_time - last_time < timeout) {
     return;
   }
-
-  uint8_t msg[data_bytes];
-  encodeMessage(msg, consensus_tell[0], consensus_tell[1], 0);
   handshake = false;
-  write(current, 0, msg);
+  write(current, consensus_tell, 0);
   last_time = millis();
 
   Serial.print("Consensus: Asked node "); Serial.println(current);
 }
 
-void LedConsensus::rcvAns(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & mask;
-
+void LedConsensus::rcvAns(byte senderId) {
   Serial.print("Consensus: Current "); Serial.print(current);
   Serial.print(". Received from node "); Serial.println(senderId);
 
@@ -95,9 +90,7 @@ void LedConsensus::rcvAns(can_frame frame) {
 }
 
 void LedConsensus::rcvStart(byte senderId) {
-  uint8_t msg[data_bytes];
-  encodeMessage(msg, consensus_rcv[0], consensus_rcv[1], 0);
-  write(senderId, 0, msg);
+  write(senderId, consensus_rcv, 0);
   if (finished())
     startCounter();
   Serial.print("Consensus: Answered node "); Serial.println(senderId);
@@ -325,26 +318,20 @@ void LedConsensus::calcLagrangeMult() {
 void LedConsensus::send_duty_cycle() {
   uint8_t msg[data_bytes];
 
-  //Serial.print("Sent ledConsensus ");
+  Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
-    encodeMessage(msg, duty_cycle_code + i, 0, dMat[nodeId - 1][i]);
-    //Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
-    write(0, 0, msg);
+    write(0, duty_cycle_code + i, dMat[nodeId - 1][i]);
+    Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
   }
-  //Serial.println();
+  Serial.println();
 }
 
-void LedConsensus::receive_duty_cycle(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & mask;
-
-  byte index = (byte)(frame.data[0] - duty_cycle_code);
-  float value;
-  memcpy(&value, frame.data + 2, sizeof(float));
-
+void LedConsensus::receive_duty_cycle(byte senderId, byte code, float value) {
+  byte index = code - duty_cycle_code;
   dMat[senderId - 1][index] = value;
-  //Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
-
   received++;
+  
+  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
 }
 
 void LedConsensus::run() {

@@ -40,8 +40,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
       unsigned long curr_time = millis();
       // Timed out, send again
       if (curr_time - last_time >= timeout) {
-        encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
-        write(0, 0, msg);
+        write(0, calibr_wait, 0);
         last_time = curr_time;
         Serial.println("Wrote wait message");
       }
@@ -83,8 +82,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
         break;
     }
 
-    encodeMessage(msg, calibr_wait[0], calibr_wait[1], 0);
-    write(0, 0, msg);
+    write(0, calibr_wait, 0);
     waiting = true;
     last_time = millis();
     Serial.println("Wrote wait message");
@@ -101,8 +99,7 @@ void Calibration::receive_answer(byte senderId) {
 
 void Calibration::send_answer(byte senderId) {
   uint8_t msg[data_bytes];
-  encodeMessage(msg, calibr_answer[0], calibr_answer[1], 0);
-  write(senderId, 0, msg);
+  write(senderId, calibr_answer, 0);
 
   Serial.print("Sync: Answered node "); Serial.println(senderId);
 }

@@ -24,7 +24,7 @@ class Sync {
     void init(byte nodeId, byte nNodes);
     bool isOn();
     void ask_node();
-    void receive_answer(can_frame frame);    
+    void receive_answer(byte senderId);    
     void answer_node(byte senderId);
 };
 /*--------Function propotypes--------*/

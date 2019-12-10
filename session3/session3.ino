@@ -9,10 +9,9 @@
 
 /*----------------- Variables -----------------*/
 can_frame frame;
-uint8_t msg[data_bytes];
-char code[2];
-float value;
 byte senderId;
+char code;
+float value;
 Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
@@ -88,60 +87,49 @@ void handleNewMessages() {
     arduino_overflow = false;
   }
 
-  while ( cf_stream.get(frame) ) {
-    decodeMessage(frame, senderId, code, &value);
+while ( cf_stream.get(frame) ) {
+    decodeMessage(frame, senderId, code, value);
 
     Serial.print("\tReceiving: ");
-    Serial.print((char)msg[0]); Serial.print(' '); Serial.println((char)msg[1]);
+    Serial.print("Code "); Serial.println(code);
     Serial.print("From "); Serial.println(senderId);
 
-    switch (code[0]) {
+    switch (code) {
       // Synchronize
-      case sync_ask[0]:
-        switch (code[1]) {
-          case sync_ask[1]:
-            sync.answer_node(senderId);
-            break;
+      case sync_ask:
+        sync.answer_node(senderId);
+        break;
 
-          case sync_ans[1]:
-            sync.receive_answer(frame);
-            break;
-        }
+      case sync_ans:
+        sync.receive_answer(senderId);
         break;
 
       // Calibrate
-      case calibr_start[0]:
-        switch (code[1]) {
-          case calibr_start[1]:
-            calibrator.init(nodeId, nNodes);
-            break;
+      case calibr_start:
+        calibrator.init(nodeId, nNodes);
+        break;
 
-          case calibr_answer[1]:
-            calibrator.receive_answer(senderId);
-            break;
+      case calibr_answer:
+        calibrator.receive_answer(senderId);
+        break;
 
-          case calibr_wait[1]:
-            calibrator.send_answer(senderId);
-            break;
-        }
+      case calibr_wait:
+        calibrator.send_answer(senderId);
         break;
 
       // Consensus initial communication
-      case consensus_tell[0]:
-        switch (code[1]) {
-          case consensus_tell[1]:
-            ledConsensus.rcvStart(senderId);
-            break;
-
-          case consensus_rcv[1]:
-            ledConsensus.rcvAns(frame);
-            break;
-        }
+      case consensus_tell:
+        ledConsensus.rcvStart(senderId);
+        break;
+        
+      case consensus_rcv:
+        ledConsensus.rcvAns(senderId);
         break;
 
       default:
-        if (code[0] >= duty_cycle_code || code[0] < duty_cycle_code + nNodes)
-          ledConsensus.receive_duty_cycle(frame);
+        if (code >= duty_cycle_code || code < duty_cycle_code + nNodes)
+          ledConsensus.receive_duty_cycle(senderId, code, value);
+        break;
     }
   }
 }

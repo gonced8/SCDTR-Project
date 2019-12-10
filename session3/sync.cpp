@@ -22,18 +22,14 @@ void Sync::ask_node() {
     return;
   }
 
-  uint8_t msg[data_bytes];
-  encodeMessage(msg, sync_ask[0], sync_ask[1], 0);
   handshake = false;
-  write(current, 0, msg);
+  write(current, sync_ask, 0);
   last_time = millis();
 
   Serial.print("Sync: Asked node "); Serial.println(current);
 }
 
-void Sync::receive_answer(can_frame frame) {
-  byte senderId = (frame.can_id >> shiftId) & mask;
-
+void Sync::receive_answer(byte senderId) {
   Serial.print("Sync: Current "); Serial.print(current);
   Serial.print(". Received from node "); Serial.println(senderId);
 
@@ -55,9 +51,7 @@ void Sync::receive_answer(can_frame frame) {
 }
 
 void Sync::answer_node(byte senderId) {
-  uint8_t msg[data_bytes];
-  encodeMessage(msg, sync_ans[0], sync_ans[1], 0);
-  write(senderId, 0, msg);
+  write(senderId, sync_ans, 0);
 
   Serial.print("Sync: Answered node "); Serial.println(senderId);
 }
