@@ -40,27 +40,17 @@ void calcDisturbance(LedConsensus &ledConsensus, float measured) {
   Serial.print("New o is "); Serial.println(new_o);
   if (abs(new_o - ledConsensus.getLocalO()) > 5) {
     ledConsensus.setLocalO(new_o);
-    ledConsensus.startNew();
-    
+    ledConsensus.startCounter();
+    ledConsensus.tellOthers();
     Serial.println("Will enter consensus again");
   }
 }
 
-void LedConsensus::ConsensusComms::init(LedConsensus& _parent) {
-  parent = _parent;
-  current = 1;
-  if (current == nodeId)
-    current++;
-  waiting = false;
-  handshake = true;
-  last_time = millis();
-}
-
-void LedConsensus::ConsensusComms::turnOn() {
+void LedConsensus::tellOthers() {
   waiting = true;
 }
 
-void LedConsensus::ConsensusComms::tellStart() {
+void LedConsensus::tellStart() {
   unsigned long curr_time = millis();
 
   if (curr_time - last_time < timeout) {
@@ -76,7 +66,7 @@ void LedConsensus::ConsensusComms::tellStart() {
   Serial.print("Consensus: Asked node "); Serial.println(current);
 }
 
-void LedConsensus::ConsensusComms::rcvAns(can_frame frame) {
+void LedConsensus::rcvAns(can_frame frame) {
   byte senderId = (frame.can_id >> shiftId) & mask;
 
   Serial.print("Consensus: Current "); Serial.print(current);
@@ -104,18 +94,19 @@ void LedConsensus::ConsensusComms::rcvAns(can_frame frame) {
   }
 }
 
-void LedConsensus::ConsensusComms::rcvStart(byte senderId) {
+void LedConsensus::rcvStart(byte senderId) {
   uint8_t msg[data_bytes];
   encodeMessage(msg, consensus_rcv[0], consensus_rcv[1], 0);
   write(senderId, 0, msg);
-  if (parent.finished())
-    parent.startNew();
+  if (finished())
+    startCounter();
   Serial.print("Consensus: Answered node "); Serial.println(senderId);
 }
 
 void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float* new_y) {
   nodeId = _nodeId;
   nNodes = _nNodes;
+  // Consensus setup
   rho = _rho;
   c_i = _c_i;
   c[nodeId - 1] = c_i;
@@ -127,11 +118,18 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
       dMat[i][j] = 0;
     }
   }
+  // Ref setup
   if (deskOccupancy)
     setLocalL(luxRefOcc);
   else
     setLocalL(luxRefUnocc);
-  consensusComms.init(*this);
+  // Comms setup
+  current = 1;
+  if (current == nodeId)
+    current++;
+  waiting = false;
+  handshake = true;
+  last_time = millis();
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -203,7 +201,7 @@ void LedConsensus::calcNewO() {
   o_i = new_o;
 }
 
-void LedConsensus::startNew() {
+void LedConsensus::startCounter() {
   remainingIters = maxIters;
 }
 
@@ -368,7 +366,6 @@ void LedConsensus::run() {
       calcMeanVector();
       calcLagrangeMult();
       firstPart = true;
-  
       calcNewO();
       if (remainingIters == 1) {  // last iteration, update duty cycle
         Serial.println("Updated dutyCycle at last iteration");

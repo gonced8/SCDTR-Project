@@ -42,22 +42,6 @@ extern float dutyCycle;
 
 /*---------Type definition----------*/
 class LedConsensus {
-  class ConsensusComms {
-      LedConsensus& parent;
-      byte current;
-      bool waiting;
-      bool handshake;
-      unsigned long last_time; 
-      const unsigned int timeout = 100;
-  
-    public:
-      void init(LedConsensus& parent); 
-      void turnOn();
-      void tellStart();
-      void rcvAns(can_frame frame);
-      void rcvStart(byte senderId); 
-  };
-
     byte nodeId;
     byte nNodes;
     float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
@@ -76,8 +60,9 @@ class LedConsensus {
     unsigned long last_time;
     const unsigned int timeout = 250;
     int remainingIters;
-    bool waiting = false;
-    ConsensusComms consensusComms;
+    byte current;
+    bool waiting;
+    bool handshake;
     
   private:
     void ziCalc(float* zi);
@@ -101,8 +86,12 @@ class LedConsensus {
     float calcExpectedLux();
     void send_duty_cycle();
     void receive_duty_cycle(can_frame frame);
-    void startNew();
+    void startCounter();
     bool finished();
+    void tellOthers();
+    void tellStart();
+    void rcvAns(can_frame frame);
+    void rcvStart(byte senderId); 
     void run();
 };
 

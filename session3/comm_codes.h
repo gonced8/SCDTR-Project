@@ -16,8 +16,8 @@ const constexpr char ctrl_recv = 'R';
 
 const constexpr char duty_cycle_code = '0';
 
-const constexpr char consensus_tell[2] = {'C', 'Q'};
-const constexpr char consensus_rcv[2] = {'C', 'A'};
+const constexpr char consensus_tell[2] = {'D', 'Q'};
+const constexpr char consensus_rcv[2] = {'D', 'A'};
 
 
 #endif //COM_CODES

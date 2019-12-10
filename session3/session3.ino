@@ -72,7 +72,7 @@ void loop() {
     }
   }
 
-  delay(10);
+  delay(5);
 }
 
 void handleNewMessages() {
@@ -122,6 +122,19 @@ void handleNewMessages() {
 
           case calibr_wait[1]:
             calibrator.send_answer(senderId);
+            break;
+        }
+        break;
+
+      // Consensus initial communication
+      case consensus_tell[0]:
+        switch (code[1]) {
+          case consensus_tell[1]:
+            ledConsensus.rcvStart(senderId);
+            break;
+
+          case consensus_rcv[1]:
+            ledConsensus.rcvAns(frame);
             break;
         }
         break;
