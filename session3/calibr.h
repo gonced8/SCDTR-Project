@@ -28,13 +28,13 @@ class Calibration {
     bool handshakes[maxNodes];
     byte nHand;
     unsigned long last_time;
-    const unsigned int timeout = 250;
+    const unsigned int timeout = 500;
   public:
     bool isOn();
     void init(byte id, byte n);
     void run(LedConsensus &ledConsensus);
-    void receive_answer(byte senderId);
-    void send_answer(byte senderId);
+    void receive_answer(byte senderId, float value);
+    void send_answer(byte senderId, float value);
 };
 /*--------Function propotypes--------*/
 

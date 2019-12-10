@@ -110,11 +110,11 @@ void handleNewMessages() {
         break;
 
       case calibr_answer:
-        calibrator.receive_answer(senderId);
+        calibrator.receive_answer(senderId, value);
         break;
 
       case calibr_wait:
-        calibrator.send_answer(senderId);
+        calibrator.send_answer(senderId, value);
         break;
 
       // Consensus initial communication

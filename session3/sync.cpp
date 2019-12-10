@@ -4,10 +4,11 @@ void Sync::init(byte _nodeId, byte _nNodes) {
   on = true;
   nodeId = _nodeId;
   nNodes = _nNodes;
-  current = 1;
-  if (current == nodeId)
-    current++;
-  handshake = true;
+  first = true;
+  for (byte i = 0; i < nNodes; i++) {
+    handshakes[i] = false;
+  }
+  nHand = 0;
   last_time = millis();
 }
 
@@ -18,35 +19,24 @@ bool Sync::isOn() {
 void Sync::ask_node() {
   unsigned long curr_time = millis();
 
-  if (!handshake & (curr_time - last_time < timeout)) {
-    return;
+  if (first || (curr_time - last_time >= timeout)) {
+    first = false;
+    write(0, sync_ask, 0);
+    last_time = curr_time;
   }
-
-  handshake = false;
-  write(current, sync_ask, 0);
-  last_time = millis();
-
-  Serial.print("Sync: Asked node "); Serial.println(current);
 }
 
 void Sync::receive_answer(byte senderId) {
-  Serial.print("Sync: Current "); Serial.print(current);
-  Serial.print(". Received from node "); Serial.println(senderId);
+  if (!handshakes[senderId - 1]) {
+    nHand++;
+    handshakes[senderId - 1] = true;
+    Serial.print("Handshaked with node "); Serial.println(senderId);
+  }
 
-  if (senderId == current) {
-    handshake = true;
-
-    current++;
-    // Doesn't count with itself
-    if (current == nodeId)
-      current++;
-
-    // Check if sync with all
-    if (current > nNodes) {
-      on = false;
-      Serial.println("Synchronization complete.");
-      return;
-    }
+  // Check if sync with all
+  if (nHand >= nNodes - 1) {
+    on = false;
+    Serial.println("Synchronization complete.");
   }
 }
 

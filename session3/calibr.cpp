@@ -26,7 +26,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
 
   if (waiting) {
     // Successful handshakes
-    if (nHand == nNodes - 1) {
+    if (nHand >= nNodes - 1) {
       waiting = false;
 
       // Reset handshakes array
@@ -40,7 +40,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
       unsigned long curr_time = millis();
       // Timed out, send again
       if (curr_time - last_time >= timeout) {
-        write(0, calibr_wait, 0);
+        write(0, calibr_wait, nodeCounter);
         last_time = curr_time;
         Serial.println("Wrote wait message");
       }
@@ -74,7 +74,6 @@ void Calibration::run(LedConsensus &ledConsensus) {
         break;
 
       case measure:
-        delay(500);
         measurements[nodeCounter] = analogRead(ldrPin);
 
         nodeCounter++;
@@ -82,7 +81,8 @@ void Calibration::run(LedConsensus &ledConsensus) {
         break;
     }
 
-    write(0, calibr_wait, 0);
+    delay(500);
+    write(0, calibr_wait, nodeCounter);
     waiting = true;
     last_time = millis();
     Serial.println("Wrote wait message");
@@ -90,16 +90,16 @@ void Calibration::run(LedConsensus &ledConsensus) {
   return;
 }
 
-void Calibration::receive_answer(byte senderId) {
-  if (!handshakes[senderId - 1]) {
+void Calibration::receive_answer(byte senderId, float value) {
+  if (!handshakes[senderId - 1] && ((int) value) == nodeCounter) {
     nHand++;
     handshakes[senderId - 1] = true;
   }
 }
 
-void Calibration::send_answer(byte senderId) {
+void Calibration::send_answer(byte senderId, float value) {
   uint8_t msg[data_bytes];
-  write(senderId, calibr_answer, 1234.56789);
+  write(senderId, calibr_answer, value);
 
   Serial.print("Sync: Answered node "); Serial.println(senderId);
 }

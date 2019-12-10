@@ -10,14 +10,16 @@
 #include "can_comms.h"
 
 /*---------Constants----------*/
+#define maxNodes 5
 
 /*---------Type definition----------*/
 class Sync {
     bool on;
     byte nodeId;
     byte nNodes;
-    byte current;
-    bool handshake;
+    bool first;
+    bool handshakes[maxNodes];
+    byte nHand;
     unsigned long last_time;
     const unsigned int timeout = 500;
   public:
