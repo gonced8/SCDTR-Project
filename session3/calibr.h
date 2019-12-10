@@ -25,7 +25,8 @@ class Calibration {
     enum Action {turn = 't', measure = 'm'};
     Action action;
     bool waiting;
-    bool handshakes[maxNodes];
+    bool handshakesQ[maxNodes];
+    bool handshakesA[maxNodes];
     byte nHand;
     unsigned long last_time;
     const unsigned int timeout = 500;
