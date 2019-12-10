@@ -64,14 +64,12 @@ int main() {
 	list.push(2);
 
 	cout << "LinkedList without pop" << endl;
-	Node *temp = list.front();
-	for(unsigned int i=0; i<list.size(); i++){
-        cout << ' ' << temp->value();
-		temp = temp->next();
+	for(Node *node=list.front(); node!=NULL; node=node->next()){
+        cout << ' ' << node->value();
 	}
 	cout << endl << endl;
 
-	cout << "LinkedList without pop" << endl;
+	cout << "LinkedList with pop" << endl;
     while (!list.empty()) { 
         cout << ' ' << list.front()->value(); 
         list.pop(); 
