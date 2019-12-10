@@ -87,11 +87,11 @@ void handleNewMessages() {
     arduino_overflow = false;
   }
 
-while ( cf_stream.get(frame) ) {
+  while ( cf_stream.get(frame) ) {
     decodeMessage(frame, senderId, code, value);
 
     Serial.print("\tReceiving: ");
-    Serial.print("Code "); Serial.println(code);
+    Serial.print("Code "); Serial.println((byte)code);
     Serial.print("From "); Serial.println(senderId);
 
     switch (code) {
@@ -121,7 +121,7 @@ while ( cf_stream.get(frame) ) {
       case consensus_tell:
         ledConsensus.rcvStart(senderId);
         break;
-        
+
       case consensus_rcv:
         ledConsensus.rcvAns(senderId);
         break;

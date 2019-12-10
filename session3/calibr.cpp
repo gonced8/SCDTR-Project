@@ -99,7 +99,7 @@ void Calibration::receive_answer(byte senderId) {
 
 void Calibration::send_answer(byte senderId) {
   uint8_t msg[data_bytes];
-  write(senderId, calibr_answer, 0);
+  write(senderId, calibr_answer, 1234.56789);
 
   Serial.print("Sync: Answered node "); Serial.println(senderId);
 }

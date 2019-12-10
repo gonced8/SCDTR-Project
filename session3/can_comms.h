@@ -32,7 +32,7 @@ extern volatile bool arduino_overflow;
 extern volatile can_frame_stream cf_stream; //the object to use
 
 union my_can_msg {
-  uint32_t value;
+  float value;
   uint8_t bytes[data_bytes];
 };
 

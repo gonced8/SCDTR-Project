@@ -38,7 +38,7 @@ float getLux(int measurement) {
 void calcDisturbance(LedConsensus &ledConsensus, float measured) {
   float new_o = measured - ledConsensus.calcExpectedLux();
   Serial.print("New o is "); Serial.println(new_o);
-  if (abs(new_o - ledConsensus.getLocalO()) > 5) {
+  if (abs(new_o - ledConsensus.getLocalO()) > 10) {
     ledConsensus.setLocalO(new_o);
     ledConsensus.startCounter();
     ledConsensus.tellOthers();
@@ -348,7 +348,6 @@ void LedConsensus::run() {
     }
     else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
       // received -= (nNodes-1)*nNodes;
-      Serial.print("Timed out: "); Serial.println(current_time - last_time >= timeout);
       received = 0;   // IMPROVE
       calcMeanVector();
       calcLagrangeMult();
