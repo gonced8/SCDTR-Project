@@ -348,11 +348,10 @@ void LedConsensus::run() {
       firstPart = true;
       calcMeanVector();
       calcLagrangeMult();
-      calcOverallDC();
       calcNewO();
       if (remainingIters == 1) {  // last iteration, update duty cycle
         Serial.println("Updated dutyCycle at last iteration");
-        //memcpy(dNodep, dNode, nNodes * sizeof(float));
+        calcOverallDC();
         dutyCycle = dNode[nodeId - 1];
       }
       remainingIters--;
