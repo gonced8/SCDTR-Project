@@ -9,7 +9,6 @@
 #include <Arduino.h>
 
 // Custom imports
-#include "hub.h"
 #include "can_comms.h"
 
 /*-------Constants declaration-------*/
@@ -19,9 +18,9 @@ constexpr byte ldrPin = A0;
 
 // Circuit parameters
 constexpr int Vcc = 5000;  // [mV]
-constexpr int R1 = 10;     // [KOhm]
+constexpr byte R1 = 10;     // [KOhm]
 
-constexpr int maxIters = 10;
+constexpr byte maxIters = 10;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -56,15 +55,18 @@ class LedConsensus {
     float L_i = 0;
     float f_i = 0;
     bool firstPart;
-    byte received;
     unsigned long last_time;
     const unsigned int timeout = 250;
-    int remainingIters;
+    byte remainingIters;
     bool waiting;
     bool first;
     bool handshakes[maxNodes];
     byte nHand;
-    
+    bool boolMat[maxNodes][maxNodes];
+    byte received[maxNodes];
+    byte allReceived;
+    bool nodesReceived[maxNodes];
+
   private:
     void ziCalc(float* zi);
     float dotProd(float x[maxNodes], float y[maxNodes]);
@@ -72,7 +74,7 @@ class LedConsensus {
     bool findMinima();
     void calcMeanVector();
     void calcLagrangeMult();
-    
+
   public:
     void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
     void setLocalC(float c_i);
@@ -85,14 +87,15 @@ class LedConsensus {
     void getLocalD(float* d);
     void calcNewO();
     float calcExpectedLux();
-    void send_duty_cycle();
     void receive_duty_cycle(byte senderId, byte code, float value);
+    void send_duty_cycle();
+    void ask_duty_cycle();
     void startCounter();
     bool finished();
     void tellOthers();
     void tellStart();
     void rcvAns(byte senderId);
-    void rcvStart(byte senderId); 
+    void rcvStart(byte senderId);
     void calcOverallDC();
     void run();
 };

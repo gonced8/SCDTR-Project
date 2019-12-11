@@ -11,7 +11,6 @@
 // Custom imports
 #include "can_frame_stream.h"
 #include "comm_codes.h"
-#include "hub.h"
 
 /*-------Constants declaration-------*/
 constexpr byte data_bytes = 4;
@@ -24,6 +23,7 @@ constexpr byte shiftFromId = 0;
 /*-------Variable declaration-------*/
 // CAN Bus
 extern MCP2515 mcp2515;
+extern byte nodeId;
 
 /*---------Type definition----------*/
 extern volatile bool interrupt; //notification flag for ISR and loop()

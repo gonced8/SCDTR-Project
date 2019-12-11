@@ -11,8 +11,8 @@ const float b[5] = {1.763, 1.763, 1.763, 0, 0}; // LDR calibration
 float k[5] = {0.0, 0.0, 0.0, 0.0, 0.0}; // Gains
 
 // Control related variables
-float luxRefUnocc = 20;
-float luxRefOcc = 50;
+float luxRefUnocc = 10;
+float luxRefOcc = 30;
 bool deskOccupancy = false;
 
 // Optimization
@@ -38,12 +38,14 @@ float getLux(int measurement) {
 void calcDisturbance(LedConsensus &ledConsensus, float measured) {
   float new_o = measured - ledConsensus.calcExpectedLux();
   Serial.print("New o is "); Serial.println(new_o);
-  if (abs(new_o - ledConsensus.getLocalO()) > 10) {
-    ledConsensus.setLocalO(new_o);
-    ledConsensus.startCounter();
-    ledConsensus.tellOthers();
-    Serial.println("Will enter consensus again");
-  }
+  //ledConsensus.setLocalO(new_o);
+  //ledConsensus.startCounter();
+    if (abs(new_o - ledConsensus.getLocalO()) > 10) {
+      ledConsensus.setLocalO(new_o);
+      ledConsensus.startCounter();
+      ledConsensus.tellOthers();
+      Serial.println("Will enter consensus again");
+    }
 }
 
 void LedConsensus::tellOthers() {
@@ -71,7 +73,7 @@ void LedConsensus::rcvAns(byte senderId) {
   // Check if sync with all
   if (nHand >= nNodes - 1) {
     // Reset setup
-    for (byte i = 0; i < nNodes; i++) 
+    for (byte i = 0; i < nNodes; i++)
       handshakes[i] = false;
     nHand = 0;
     first = true;
@@ -97,12 +99,16 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   c[nodeId - 1] = c_i;
   memcpy(y, new_y, sizeof(y));
   firstPart = true;
-  received = 0;
   for (int i = 0; i < nNodes; i++) {
     for (int j = 0; j < nNodes; j++) {
       dMat[i][j] = 0;
+      boolMat[i][j] = false;
     }
+    handshakes[i] = false;
+    received[i] = 0;
+    nodesReceived[i] = false;
   }
+  allReceived = 0;
   // Ref setup
   if (deskOccupancy)
     setLocalL(luxRefOcc);
@@ -111,8 +117,6 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   // Comms setup
   waiting = false;
   first = true;
-  for (byte i = 0; i < nNodes; i++) 
-    handshakes[i] = false;
   nHand = 0;
   last_time = millis();
 }
@@ -196,7 +200,7 @@ bool LedConsensus::findMinima() {
   // bool: true if feasible, false if unfeasible
   float newd[5];
   float zi[5];
-  float knorm = dotProd(k, k); 
+  float knorm = dotProd(k, k);
 
   // First we will try to find the solution in the interior
   for (byte i = 0; i < nNodes; i++) {
@@ -209,6 +213,7 @@ bool LedConsensus::findMinima() {
   if (f_iCalc(newd) != infinity) { // Solution is feasible
     memcpy(dNode, newd, nNodes * sizeof(float));
     memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
+    Serial.println("Interior is feasible");
     return true;
   }
 
@@ -274,12 +279,15 @@ bool LedConsensus::findMinima() {
   float lagrangean_aux = 0;
   float ft = infinity;
   for (byte i = 0; i < 5; i++) {  // this 5 is fixed
+    Serial.print("Feasible "); Serial.print(i); Serial.print(" is "); Serial.println(feasible[i]);
     if (feasible[i]) {
       lagrangean_aux = (rho / 2) * dotProd(dvec_pointer[i], dvec_pointer[i]) - dotProd(dvec_pointer[i], zi);
+      Serial.print("Cost for "); Serial.print(i); Serial.print(" is "); Serial.println(lagrangean_aux);
       if (lagrangean_aux <= ft) {
         ft = lagrangean_aux;
         memcpy(dNode, dvec_pointer[i], nNodes * sizeof(float));
         memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
+        Serial.print("Changed optimal to "); Serial.println(i);
       }
     }
   }
@@ -309,20 +317,31 @@ void LedConsensus::calcLagrangeMult() {
 void LedConsensus::send_duty_cycle() {
   uint8_t msg[data_bytes];
 
-  Serial.print("Sent ledConsensus ");
   for (int i = 0; i < nNodes; i++) {
     write(0, duty_cycle_code + i, dMat[nodeId - 1][i]);
-    Serial.print(dMat[nodeId - 1][i]); Serial.print(" ");
   }
-  Serial.println();
 }
 
 void LedConsensus::receive_duty_cycle(byte senderId, byte code, float value) {
   byte index = code - duty_cycle_code;
   dMat[senderId - 1][index] = value;
-  received++;
-  
-  Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
+
+  if (!boolMat[senderId - 1][index]) {
+    boolMat[senderId - 1][index] = true;
+    received[senderId - 1]++;
+
+    if (received[senderId - 1] == nNodes) {
+      allReceived++;
+      nodesReceived[senderId - 1] = true;
+    }
+  }
+}
+
+void LedConsensus::ask_duty_cycle() {
+  for (byte i = 0; i < nNodes; i++) {
+    if (!received[i] && i != nodeId - 1)
+      write(i, duty_cycle_ask, 0);
+  }
 }
 
 void LedConsensus::calcOverallDC() {
@@ -337,24 +356,42 @@ void LedConsensus::run() {
   else {
     unsigned long current_time = millis();
     if (firstPart) {
+      Serial.println("firstPart");
       findMinima();
       send_duty_cycle();
       firstPart = false;
       last_time = current_time;
+      ask_duty_cycle();
     }
-    else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
+    else if (allReceived >= nNodes - 1) {
+      Serial.println("allReceived");
       // received -= (nNodes-1)*nNodes;
-      received = 0;   // IMPROVE
+      allReceived = 0;   // IMPROVE
       firstPart = true;
       calcMeanVector();
       calcLagrangeMult();
-      calcNewO();
+      //calcOverallDC();
+      //dutyCycle = dNode[nodeId - 1];
       if (remainingIters == 1) {  // last iteration, update duty cycle
         Serial.println("Updated dutyCycle at last iteration");
         calcOverallDC();
         dutyCycle = dNode[nodeId - 1];
-      }
+        }
       remainingIters--;
+  
+      for (byte i = 0; i < nNodes; i++) {
+        for (byte j = 0; j < nNodes; j++) {
+          boolMat[i][j] = false;
+        }
+        received[i] = 0;
+        nodesReceived[i] = false;
+      }
+      allReceived = 0;
+    }
+    else if (current_time - last_time >= timeout) {
+      Serial.println("Timeout");
+      ask_duty_cycle();
+      last_time = current_time;
     }
   }
 }

@@ -71,7 +71,6 @@ void decodeMessage(can_frame frame, byte &senderId, char &code, float &value) {
     msg.bytes[i] = frame.data[i];
 
   value = msg.value;
-  Serial.print("Value inside decode is "); Serial.println(value);
 }
 
 void irqHandler() {

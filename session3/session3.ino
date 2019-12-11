@@ -1,7 +1,6 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-#include "hub.h"
 #include "can_comms.h"
 #include "dist_control.h"
 #include "calibr.h"
@@ -16,8 +15,17 @@ Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
 
+byte nodeId; // initialize the variable to make it global
+byte nNodes = 3; // TODO: should be automatically computed
+constexpr byte ID0 = 7;
+constexpr byte ID1 = 8;
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
+
+void getNodeId(){
+  nodeId = digitalRead(ID0);
+  nodeId |= digitalRead(ID1)<<1;
+}
 
 /*---------------------------------------------*/
 
@@ -43,7 +51,7 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 1, 1, y_init);
+  ledConsensus.init(nodeId, nNodes, 1, 10, y_init);
 
 }
 
@@ -60,11 +68,13 @@ void loop() {
 
   else {
     if (ledConsensus.finished()) {
-      // THIS WRITE WILL LATER BE IN THE PID! disturbance calculated for previous dutyCycle
       measuredLux = getLux(analogRead(ldrPin));
+      Serial.print("Measured lux is "); Serial.println(measuredLux);
       calcDisturbance(ledConsensus, measuredLux);
       analogWrite(ledPin, dutyCycle * 255.0 / 100);
       Serial.print("Wrote to led "); Serial.println(dutyCycle);
+      /*if (millis() > 30 * 1000)
+        ledConsensus.setLocalL(luxRefOcc);*/
       //////
     } else {
       ledConsensus.run();
@@ -90,9 +100,10 @@ void handleNewMessages() {
   while ( cf_stream.get(frame) ) {
     decodeMessage(frame, senderId, code, value);
 
-    Serial.print("\tReceiving: ");
-    Serial.print("Code "); Serial.println((byte)code);
-    Serial.print("From "); Serial.println(senderId);
+    Serial.print("Receiving: ");
+    Serial.print("\tFrom "); Serial.print(senderId);
+    Serial.print("\tCode "); Serial.print((byte)code);
+    Serial.print("\tValue "); Serial.println(value);
 
     switch (code) {
       // Synchronize
@@ -115,6 +126,11 @@ void handleNewMessages() {
 
       case calibr_wait:
         calibrator.send_answer(senderId, value);
+        break;
+
+      // Duty cycle
+      case duty_cycle_ask:
+        ledConsensus.send_duty_cycle();
         break;
 
       // Consensus initial communication

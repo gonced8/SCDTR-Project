@@ -16,8 +16,7 @@ void Calibration::init(byte id, byte n) {
   action = turn;
   nodeCounter = 0;
   for (byte i = 0; i < nNodes; i++) {
-    handshakesQ[i] = false;
-    handshakesA[i] = false;
+    handshakes[i] = false;
   }
   nHand = 0;
 }
@@ -27,13 +26,12 @@ void Calibration::run(LedConsensus &ledConsensus) {
 
   if (waiting) {
     // Successful handshakes
-    if (nHand >= 2 * (nNodes - 1)) {
+    if (nHand >= (nNodes - 1)) {
       waiting = false;
 
       // Reset handshakes array
       for (byte i = 0; i < nNodes; i++) {
-        handshakesQ[i] = false;
-        handshakesA[i] = false;
+        handshakes[i] = false;
       }
       nHand = 0;
     }
@@ -93,18 +91,16 @@ void Calibration::run(LedConsensus &ledConsensus) {
 }
 
 void Calibration::receive_answer(byte senderId, float value) {
-  if (!handshakesQ[senderId - 1] && ((int) value) == nodeCounter) {
+  Serial.print("Current "); Serial.println(nodeCounter);
+  if (!handshakes[senderId - 1] && ((int) value) == nodeCounter) {
     nHand++;
-    handshakesQ[senderId - 1] = true;
+    handshakes[senderId - 1] = true;
   }
 }
 
 void Calibration::send_answer(byte senderId, float value) {
-  if (!handshakesA[senderId - 1] && ((int) value) == nodeCounter) {
-    nHand++;
-    handshakesA[senderId - 1] = true;
-  }
-  write(senderId, calibr_answer, value);
+  if (value <= nodeCounter)
+    write(senderId, calibr_answer, value);
 
   Serial.print("Sync: Answered node "); Serial.println(senderId);
 }
