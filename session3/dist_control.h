@@ -47,7 +47,7 @@ class LedConsensus {
     float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
     float c_i;
     float dNode[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float dNodep[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float dNodeOverall[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
     float dMat[maxNodes][maxNodes];
     float dAvg[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
     float rho;
@@ -60,9 +60,10 @@ class LedConsensus {
     unsigned long last_time;
     const unsigned int timeout = 250;
     int remainingIters;
-    byte current;
     bool waiting;
-    bool handshake;
+    bool first;
+    bool handshakes[maxNodes];
+    byte nHand;
     
   private:
     void ziCalc(float* zi);
@@ -92,6 +93,7 @@ class LedConsensus {
     void tellStart();
     void rcvAns(byte senderId);
     void rcvStart(byte senderId); 
+    void calcOverallDC();
     void run();
 };
 

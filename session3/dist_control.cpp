@@ -53,39 +53,31 @@ void LedConsensus::tellOthers() {
 void LedConsensus::tellStart() {
   unsigned long curr_time = millis();
 
-  if (curr_time - last_time < timeout) {
-    return;
+  if (first || (curr_time - last_time >= timeout)) {
+    first = false;
+    write(0, consensus_tell, 0);
+    last_time = curr_time;
   }
-  handshake = false;
-  write(current, consensus_tell, 0);
-  last_time = millis();
-
-  Serial.print("Consensus: Asked node "); Serial.println(current);
+  Serial.print("Consensus: Told all nodes");
 }
 
 void LedConsensus::rcvAns(byte senderId) {
-  Serial.print("Consensus: Current "); Serial.print(current);
-  Serial.print(". Received from node "); Serial.println(senderId);
+  if (!handshakes[senderId - 1]) {
+    nHand++;
+    handshakes[senderId - 1] = true;
+    Serial.print("Handshaked with node "); Serial.println(senderId);
+  }
 
-  if (senderId == current) {
-    handshake = true;
-
-    current++;
-    // Doesn't count with itself
-    if (current == nodeId)
-      current++;
-
-    // Check if sync with all
-    if (current > nNodes) {
-      // reset settings
-      waiting = false;
-      handshake = true;
-      current = 1;
-      if (current == nodeId)
-        current++;
-      Serial.println("Consensus sync complete.");
-      return;
-    }
+  // Check if sync with all
+  if (nHand >= nNodes - 1) {
+    // Reset setup
+    for (byte i = 0; i < nNodes; i++) 
+      handshakes[i] = false;
+    nHand = 0;
+    first = true;
+    // Stop waiting
+    waiting = false;
+    Serial.println("Consensus telling complete.");
   }
 }
 
@@ -117,11 +109,11 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   else
     setLocalL(luxRefUnocc);
   // Comms setup
-  current = 1;
-  if (current == nodeId)
-    current++;
   waiting = false;
-  handshake = true;
+  first = true;
+  for (byte i = 0; i < nNodes; i++) 
+    handshakes[i] = false;
+  nHand = 0;
   last_time = millis();
 }
 
@@ -185,11 +177,11 @@ bool LedConsensus::finished() {
 }
 
 float LedConsensus::calcExpectedLux() {
-  return dotProd(k, dNode);
+  return dotProd(k, dNodeOverall);
 }
 
 void LedConsensus::calcNewO() {
-  float new_o = getLux(analogRead(ldrPin)) - dotProd(k, dNodep);
+  float new_o = getLux(analogRead(ldrPin)) - calcExpectedLux();
   Serial.print("New o inside consensus is "); Serial.println(new_o);
   o_i = new_o;
 }
@@ -215,7 +207,6 @@ bool LedConsensus::findMinima() {
   }
   // Now we check if this first solution is feasible
   if (f_iCalc(newd) != infinity) { // Solution is feasible
-    //memcpy(dNodep, dNode, nNodes * sizeof(float));
     memcpy(dNode, newd, nNodes * sizeof(float));
     memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
     return true;
@@ -334,6 +325,11 @@ void LedConsensus::receive_duty_cycle(byte senderId, byte code, float value) {
   Serial.print("Received "); Serial.print(senderId); Serial.print(" "); Serial.print(index); Serial.println(value);
 }
 
+void LedConsensus::calcOverallDC() {
+  for (byte i = 0; i < nNodes; i++)
+    dNodeOverall[i] = dMat[i][i];
+}
+
 void LedConsensus::run() {
   if (waiting) {
     tellStart();
@@ -349,13 +345,14 @@ void LedConsensus::run() {
     else if ((received >= (nNodes - 1)*nNodes) || (current_time - last_time >= timeout)) {
       // received -= (nNodes-1)*nNodes;
       received = 0;   // IMPROVE
+      firstPart = true;
       calcMeanVector();
       calcLagrangeMult();
-      firstPart = true;
+      calcOverallDC();
       calcNewO();
       if (remainingIters == 1) {  // last iteration, update duty cycle
         Serial.println("Updated dutyCycle at last iteration");
-        memcpy(dNodep, dNode, nNodes * sizeof(float));
+        //memcpy(dNodep, dNode, nNodes * sizeof(float));
         dutyCycle = dNode[nodeId - 1];
       }
       remainingIters--;
