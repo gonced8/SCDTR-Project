@@ -10,7 +10,7 @@
 #include "can_comms.h"
 
 /*---------Constants----------*/
-#define maxNodes 5
+#define maxNodes 3
 
 /*---------Type definition----------*/
 class Sync {

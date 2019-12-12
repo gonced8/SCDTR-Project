@@ -3,7 +3,7 @@
 #ifndef DIST_CONTROL_H
 #define DIST_CONTROL_H
 
-#define maxNodes 5
+#define maxNodes 3
 
 // System imports
 #include <Arduino.h>
@@ -43,12 +43,12 @@ extern float dutyCycle;
 class LedConsensus {
     byte nodeId;
     byte nNodes;
-    float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float c[maxNodes];
     float c_i;
-    float dNode[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float dNodeOverall[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float dNode[maxNodes];
+    float dNodeOverall[maxNodes];
     float dMat[maxNodes][maxNodes];
-    float dAvg[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+    float dAvg[maxNodes];
     float rho;
     float y[maxNodes];
     float o_i = 0;
@@ -63,9 +63,11 @@ class LedConsensus {
     bool handshakes[maxNodes];
     byte nHand;
     bool boolMat[maxNodes][maxNodes];
-    byte received[maxNodes];
-    byte allReceived;
-    bool nodesReceived[maxNodes];
+    byte received;
+    //byte allReceived;
+    //bool nodesReceived[maxNodes];
+    //bool nodesAck[maxNodes];
+    //byte allAck;
 
   private:
     void ziCalc(float* zi);
@@ -87,9 +89,9 @@ class LedConsensus {
     void getLocalD(float* d);
     void calcNewO();
     float calcExpectedLux();
-    void receive_duty_cycle(byte senderId, byte code, float value);
+    void receive_ack(byte senderId);
+    void receive_duty_cycle(byte senderId, char code, float value);
     void send_duty_cycle();
-    void ask_duty_cycle();
     void startCounter();
     bool finished();
     void tellOthers();

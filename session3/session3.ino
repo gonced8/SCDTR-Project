@@ -47,11 +47,11 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  float y_init[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
+  float y_init[maxNodes] = {0.0, 0.0, 0.0};
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 1, 10, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 50, y_init);
 
 }
 
@@ -68,11 +68,13 @@ void loop() {
 
   else {
     if (ledConsensus.finished()) {
+      
+      analogWrite(ledPin, dutyCycle * 255.0 / 100);
+      Serial.print("Wrote to led "); Serial.println(dutyCycle);
+
       measuredLux = getLux(analogRead(ldrPin));
       Serial.print("Measured lux is "); Serial.println(measuredLux);
       calcDisturbance(ledConsensus, measuredLux);
-      analogWrite(ledPin, dutyCycle * 255.0 / 100);
-      Serial.print("Wrote to led "); Serial.println(dutyCycle);
       /*if (millis() > 30 * 1000)
         ledConsensus.setLocalL(luxRefOcc);*/
       //////
@@ -129,9 +131,9 @@ void handleNewMessages() {
         break;
 
       // Duty cycle
-      case duty_cycle_ask:
-        ledConsensus.send_duty_cycle();
-        break;
+      /*case duty_cycle_ack:
+        ledConsensus.receive_ack(senderId);
+        break;*/
 
       // Consensus initial communication
       case consensus_tell:
