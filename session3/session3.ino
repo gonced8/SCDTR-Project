@@ -22,9 +22,9 @@ constexpr byte ID1 = 8;
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
 
-void getNodeId(){
+void getNodeId() {
   nodeId = digitalRead(ID0);
-  nodeId |= digitalRead(ID1)<<1;
+  nodeId |= digitalRead(ID1) << 1;
 }
 
 /*---------------------------------------------*/
@@ -68,16 +68,9 @@ void loop() {
 
   else {
     if (ledConsensus.finished()) {
-      
-      analogWrite(ledPin, dutyCycle * 255.0 / 100);
-      Serial.print("Wrote to led "); Serial.println(dutyCycle);
-
       measuredLux = getLux(analogRead(ldrPin));
       Serial.print("Measured lux is "); Serial.println(measuredLux);
       calcDisturbance(ledConsensus, measuredLux);
-      /*if (millis() > 30 * 1000)
-        ledConsensus.setLocalL(luxRefOcc);*/
-      //////
     } else {
       ledConsensus.run();
     }
@@ -144,9 +137,29 @@ void handleNewMessages() {
         ledConsensus.rcvAns(senderId);
         break;
 
-      default:
-        if (code >= duty_cycle_code || code < duty_cycle_code + nNodes)
-          ledConsensus.receive_duty_cycle(senderId, code, value);
+      // Consensus run
+      case duty_cycle_ask:
+        ledConsensus.ans_duty_cycles(senderId) ;
+        break;
+
+      case duty_cycle_ans:
+        ledConsensus.rcv_duty_cycles(senderId, value);
+        break;
+
+      case mean_ask:
+        ledConsensus.ans_mean(senderId);
+        break;
+
+      case mean_ans:
+        ledConsensus.rcv_mean(senderId, value);
+        break;
+
+      case real_ask:
+        ledConsensus.ans_real_d(senderId);
+        break;
+
+      case real_ans:
+        ledConsensus.rcv_real_d(senderId, value);
         break;
     }
   }

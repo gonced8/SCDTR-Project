@@ -20,7 +20,7 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr byte R1 = 10;     // [KOhm]
 
-constexpr byte maxIters = 10;
+constexpr byte maxIters = 1;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -47,7 +47,6 @@ class LedConsensus {
     float c_i;
     float dNode[maxNodes];
     float dNodeOverall[maxNodes];
-    float dMat[maxNodes][maxNodes];
     float dAvg[maxNodes];
     float rho;
     float y[maxNodes];
@@ -62,12 +61,11 @@ class LedConsensus {
     bool first;
     bool handshakes[maxNodes];
     byte nHand;
-    bool boolMat[maxNodes][maxNodes];
-    byte received;
-    //byte allReceived;
-    //bool nodesReceived[maxNodes];
-    //bool nodesAck[maxNodes];
-    //byte allAck;
+
+    byte state;
+    float dColumn[maxNodes];
+    bool boolArray[maxNodes];
+    byte nBool;
 
   private:
     void ziCalc(float* zi);
@@ -89,9 +87,6 @@ class LedConsensus {
     void getLocalD(float* d);
     void calcNewO();
     float calcExpectedLux();
-    void receive_ack(byte senderId);
-    void receive_duty_cycle(byte senderId, char code, float value);
-    void send_duty_cycle();
     void startCounter();
     bool finished();
     void tellOthers();
@@ -100,6 +95,16 @@ class LedConsensus {
     void rcvStart(byte senderId);
     void calcOverallDC();
     void run();
+
+    void ask_duty_cycles();
+    void ans_duty_cycles(byte senderId);
+    void rcv_duty_cycles(byte senderId, float value);
+    void ask_mean();
+    void ans_mean(byte senderId);
+    void rcv_mean(byte senderId, float value);
+    void ask_real_d();
+    void ans_real_d(byte senderId);
+    void rcv_real_d(byte senderId, float value);
 };
 
 /*--------Function propotypes--------*/
