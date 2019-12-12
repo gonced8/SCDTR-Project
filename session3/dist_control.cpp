@@ -40,12 +40,12 @@ void calcDisturbance(LedConsensus &ledConsensus, float measured) {
   Serial.print("New o is "); Serial.println(new_o);
   //ledConsensus.setLocalO(new_o);
   //ledConsensus.startCounter();
-    if (abs(new_o - ledConsensus.getLocalO()) > 10) {
-      ledConsensus.setLocalO(new_o);
-      ledConsensus.startCounter();
-      ledConsensus.tellOthers();
-      Serial.println("Will enter consensus again");
-    }
+  if (abs(new_o - ledConsensus.getLocalO()) > 10) {
+    ledConsensus.setLocalO(new_o);
+    ledConsensus.startCounter();
+    ledConsensus.tellOthers();
+    Serial.println("Will enter consensus again");
+  }
 }
 
 void LedConsensus::tellOthers() {
@@ -143,6 +143,14 @@ float LedConsensus::f_iCalc(float* d) {
     return infinity;
 }
 
+bool LedConsensus::check_feasibility(float* d) {
+  return (d[nodeId - 1] <= 100 + tol && d[nodeId - 1] >= 0 - tol && dotProd(k, d) >= L_i - o_i - tol);
+}
+
+float LedConsensus::evaluate_cost(float *d, float *avg, rho){
+  return c_i * d[nodeId - 1] + ;
+}
+
 void LedConsensus::setLocalC(float _c_i) {
   c_i = _c_i;
   c[nodeId - 1] = c_i;
@@ -204,16 +212,15 @@ bool LedConsensus::findMinima() {
 
   // First we will try to find the solution in the interior
   for (byte i = 0; i < nNodes; i++) {
-    if (i != nodeId - 1) //Not our node
-      newd[i] = dAvg[i] - y[i] / rho;
-    else
-      newd[i] = dAvg[i] - y[i] / rho - c_i / rho;
+    newd[i] = dAvg[i] - y[i] / rho;
+    if (i == nodeId - 1) //Our node
+      newd[i] -= c_i / rho;
   }
   // Now we check if this first solution is feasible
-  if (f_iCalc(newd) != infinity) { // Solution is feasible
-    memcpy(dNode, newd, nNodes * sizeof(float));
-    memcpy(dMat[nodeId - 1], dNode, nNodes * sizeof(float));
+  if (check_feasibility(newd)) { // Solution is feasible
     Serial.println("Interior is feasible");
+    memcpy(dNode, newd, nNodes * sizeof(float));
+    memcpy(dMat[nodeId - 1], newd, nNodes * sizeof(float));
     return true;
   }
 
@@ -232,7 +239,7 @@ bool LedConsensus::findMinima() {
   float aux_cte = (1 / knorm) * (o_i - L_i + (1 / rho) * dotProd(k, zi));
   for (byte i = 0; i < nNodes; i++)
     newd[i] = (1 / rho) * zi[i] - k[i] * aux_cte;
-  if (f_iCalc(newd) != infinity) // Solution is feasible
+  if (check_feasibility(newd)) // Solution is feasible
     feasible[0] = true;
 
   // Solution 2
@@ -376,9 +383,9 @@ void LedConsensus::run() {
         Serial.println("Updated dutyCycle at last iteration");
         calcOverallDC();
         dutyCycle = dNode[nodeId - 1];
-        }
+      }
       remainingIters--;
-  
+
       for (byte i = 0; i < nNodes; i++) {
         for (byte j = 0; j < nNodes; j++) {
           boolMat[i][j] = false;
