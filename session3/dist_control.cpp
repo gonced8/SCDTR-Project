@@ -171,7 +171,12 @@ void LedConsensus::consensus_iterate(float *d, float &cost, float rho) {
 
     //Solution 5
     // simplified due to repeated calcs in 2, 3, 4
-    d_temp[nodeId - 1] = 100;
+    for (byte i = 0; i < nNodes; i++) {
+      if (i != nodeId - 1)
+        d_temp[i] -= (-1 / m) * k[i] * 100 * k[nodeId - 1];
+      else
+        d_temp[nodeId - 1] = 100;
+    }
 
     if (check_feasibility(d_temp)) { // Solution is feasible
       cost_temp = evaluate_cost(d_temp, rho);
