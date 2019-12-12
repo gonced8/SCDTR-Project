@@ -67,13 +67,7 @@ void loop() {
     calibrator.run(ledConsensus);
 
   else {
-    if (ledConsensus.finished()) {
-      measuredLux = getLux(analogRead(ldrPin));
-      Serial.print("Measured lux is "); Serial.println(measuredLux);
-      calcDisturbance(ledConsensus, measuredLux);
-    } else {
-      ledConsensus.run();
-    }
+    ledConsensus.run();
   }
 
   delay(5);
@@ -127,7 +121,7 @@ void handleNewMessages() {
       /*case duty_cycle_ack:
         ledConsensus.receive_ack(senderId);
         break;*/
-
+/*
       // Consensus initial communication
       case consensus_tell:
         ledConsensus.rcvStart(senderId);
@@ -136,7 +130,7 @@ void handleNewMessages() {
       case consensus_rcv:
         ledConsensus.rcvAns(senderId);
         break;
-
+*/
       // Consensus run
       case duty_cycle_ask:
         ledConsensus.ans_duty_cycles(senderId) ;

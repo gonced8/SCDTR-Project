@@ -20,7 +20,7 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr byte R1 = 10;     // [KOhm]
 
-constexpr byte maxIters = 1;
+constexpr byte maxIters = 5;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -75,6 +75,8 @@ class LedConsensus {
     void calcMeanVector();
     void calcLagrangeMult();
 
+    void resetBool();
+
   public:
     void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
     void setLocalC(float c_i);
@@ -88,7 +90,6 @@ class LedConsensus {
     void calcNewO();
     float calcExpectedLux();
     void startCounter();
-    bool finished();
     void tellOthers();
     void tellStart();
     void rcvAns(byte senderId);
