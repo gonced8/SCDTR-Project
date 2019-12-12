@@ -455,10 +455,10 @@ void LedConsensus::ans(byte senderId, char code) {
 }
 
 void LedConsensus::rcv(byte senderId, char code, float value) {
-  bool valid = false;
-  float *variable;
-
   if (!boolArray[senderId - 1]) {
+    bool valid = false;
+    float *variable;
+
     switch (code) {
       case duty_cycle_ans:
         valid = (state == 2);
