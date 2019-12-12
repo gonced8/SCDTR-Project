@@ -22,9 +22,9 @@ constexpr byte ID1 = 8;
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
 
-void getNodeId(){
+void getNodeId() {
   nodeId = digitalRead(ID0);
-  nodeId |= digitalRead(ID1)<<1;
+  nodeId |= digitalRead(ID1) << 1;
 }
 
 /*---------------------------------------------*/
@@ -51,7 +51,7 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 1, 10, y_init);
+  ledConsensus.init(nodeId, nNodes, 1, 0, 20);
 
 }
 
@@ -67,18 +67,7 @@ void loop() {
     calibrator.run(ledConsensus);
 
   else {
-    if (ledConsensus.finished()) {
-      measuredLux = getLux(analogRead(ldrPin));
-      Serial.print("Measured lux is "); Serial.println(measuredLux);
-      calcDisturbance(ledConsensus, measuredLux);
-      analogWrite(ledPin, dutyCycle * 255.0 / 100);
-      Serial.print("Wrote to led "); Serial.println(dutyCycle);
-      /*if (millis() > 30 * 1000)
-        ledConsensus.setLocalL(luxRefOcc);*/
-      //////
-    } else {
-      ledConsensus.run();
-    }
+    ledConsensus.consensus_run();
   }
 
   delay(5);
@@ -128,23 +117,9 @@ void handleNewMessages() {
         calibrator.send_answer(senderId, value);
         break;
 
-      // Duty cycle
-      case duty_cycle_ask:
-        ledConsensus.send_duty_cycle();
-        break;
-
-      // Consensus initial communication
-      case consensus_tell:
-        ledConsensus.rcvStart(senderId);
-        break;
-
-      case consensus_rcv:
-        ledConsensus.rcvAns(senderId);
-        break;
-
       default:
         if (code >= duty_cycle_code || code < duty_cycle_code + nNodes)
-          ledConsensus.receive_duty_cycle(senderId, code, value);
+          
         break;
     }
   }

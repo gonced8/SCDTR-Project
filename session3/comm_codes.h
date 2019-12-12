@@ -18,8 +18,7 @@ const constexpr char consensus_tell = 10;
 const constexpr char consensus_rcv = 11;
 
 // Always the last code
-const constexpr char duty_cycle_ask = 12;
-const constexpr char duty_cycle_code = 13;
+const constexpr char duty_cycle_code = 12;
 
 
 #endif //COM_CODES

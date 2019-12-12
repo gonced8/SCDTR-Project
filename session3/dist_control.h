@@ -20,7 +20,6 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr byte R1 = 10;     // [KOhm]
 
-constexpr byte maxIters = 10;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -28,12 +27,9 @@ extern const float b[maxNodes];
 extern float k[maxNodes];
 
 // Control related variables
-extern float luxRefUnocc;
-extern float luxRefOcc;
-extern bool deskOccupancy;
+extern float Li;
 
 // Optimization
-extern const float infinity;
 
 // Actuation
 extern float measuredLux;
@@ -43,61 +39,31 @@ extern float dutyCycle;
 class LedConsensus {
     byte nodeId;
     byte nNodes;
-    float c[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float c_i;
-    float dNode[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float dNodeOverall[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float dMat[maxNodes][maxNodes];
-    float dAvg[maxNodes] = {0.0, 0.0, 0.0, 0.0, 0.0};
-    float rho;
+    float d_diagonal[maxNodes];
+    float d_column[maxNodes];
+    float d[maxNodes];
+    float d_av[maxNodes];
     float y[maxNodes];
-    float o_i = 0;
-    float L_i = 0;
-    float f_i = 0;
-    bool firstPart;
-    unsigned long last_time;
-    const unsigned int timeout = 250;
-    byte remainingIters;
-    bool waiting;
-    bool first;
-    bool handshakes[maxNodes];
-    byte nHand;
-    bool boolMat[maxNodes][maxNodes];
-    byte received[maxNodes];
-    byte allReceived;
-    bool nodesReceived[maxNodes];
+    float n;
+    float m;
+    float ci;
+    float o;
+    float L;
+    float tol = 0.001;
+    float rho = 0.1;
+    byte maxiter = 50;
+    byte counter = 0;
 
   private:
-    void ziCalc(float* zi);
     float dotProd(float x[maxNodes], float y[maxNodes]);
-    float f_iCalc(float* d);
-    bool findMinima();
-    void calcMeanVector();
-    void calcLagrangeMult();
+    bool check_feasibility(float* d);
+    float evaluate_cost(float *local_d, float rho);
 
   public:
-    void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
-    void setLocalC(float c_i);
-    float getLocalC();
-    void setLocalO(float o_i);
-    float getLocalO();
-    void setLocalL(float L_i);
-    float getLocalL();
-    void getLocalDMean(float* dAvg);
-    void getLocalD(float* d);
-    void calcNewO();
-    float calcExpectedLux();
-    void receive_duty_cycle(byte senderId, byte code, float value);
-    void send_duty_cycle();
-    void ask_duty_cycle();
-    void startCounter();
-    bool finished();
-    void tellOthers();
-    void tellStart();
-    void rcvAns(byte senderId);
-    void rcvStart(byte senderId);
-    void calcOverallDC();
-    void run();
+    void init(byte _nodeId, byte _nNodes, float _ci, float _oi, float _Li);
+    void consensus_run();
+    void consensus_iterate(float *d, float &cost, float rho);
+    float measure_o();
 };
 
 /*--------Function propotypes--------*/
