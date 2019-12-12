@@ -121,40 +121,22 @@ void handleNewMessages() {
       /*case duty_cycle_ack:
         ledConsensus.receive_ack(senderId);
         break;*/
-/*
-      // Consensus initial communication
-      case consensus_tell:
-        ledConsensus.rcvStart(senderId);
-        break;
+      /*
+            // Consensus initial communication
+            case consensus_tell:
+              ledConsensus.rcvStart(senderId);
+              break;
 
-      case consensus_rcv:
-        ledConsensus.rcvAns(senderId);
-        break;
-*/
+            case consensus_rcv:
+              ledConsensus.rcvAns(senderId);
+              break;
+      */
       // Consensus run
-      case duty_cycle_ask:
-        ledConsensus.ans_duty_cycles(senderId) ;
-        break;
-
-      case duty_cycle_ans:
-        ledConsensus.rcv_duty_cycles(senderId, value);
-        break;
-
-      case mean_ask:
-        ledConsensus.ans_mean(senderId);
-        break;
-
-      case mean_ans:
-        ledConsensus.rcv_mean(senderId, value);
-        break;
-
-      case real_ask:
-        ledConsensus.ans_real_d(senderId);
-        break;
-
-      case real_ans:
-        ledConsensus.rcv_real_d(senderId, value);
-        break;
+      default:
+        if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
+          ledConsensus.ans(senderId, code);
+        else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
+          ledConsensus.rcv(senderId, code, value);
     }
   }
 }

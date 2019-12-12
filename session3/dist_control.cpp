@@ -344,7 +344,7 @@ void LedConsensus::run() {
 
     // Receive duty cycles
     case 2:
-      ask_duty_cycles();
+      ask();
       break;
 
     // Compute average
@@ -355,7 +355,7 @@ void LedConsensus::run() {
 
     // Receive means
     case 4:
-      ask_mean();
+      ask();
       break;
 
     // Calculate y
@@ -378,113 +378,112 @@ void LedConsensus::run() {
 
     // Receive d real
     case 7:
-      ask_real_d();
+      ask();
       break;
   }
 }
 
-void LedConsensus::ask_duty_cycles() {
+void LedConsensus::ask() {
   unsigned long current_time = millis();
 
-  if (first || current_time - last_time >= timeout) {
-    for (byte i = 1; i <= nNodes; i++) {
-      if (i != nodeId) {
-        write(i, duty_cycle_ask, dNode[i - 1]);
+  if (state == 2) {
+    if (first || current_time - last_time >= timeout) {
+      for (byte i = 1; i <= nNodes; i++) {
+        if (i != nodeId) {
+          write(i, duty_cycle_ask, dNode[i - 1]);
+        }
       }
+      last_time = current_time;
     }
-    last_time = current_time;
+  }
+  else {
+    char code;
+    float value;
+    switch (state) {
+      case 4:
+        code = mean_ask;
+        value = dAvg[nodeId - 1];
+        break;
+      case 7:
+        code = real_ask;
+        value = dNodeOverall[nodeId - 1];
+        break;
+    }
+
+    if (first) {
+      write(0, code, value);
+      last_time = current_time;
+    }
+    else if (current_time - last_time >= timeout) {
+      for (byte i = 1; i <= nNodes; i++) {
+        if (i != nodeId) {
+          write(i, code, value);
+        }
+      }
+      last_time = current_time;
+    }
   }
 }
 
-void LedConsensus::ans_duty_cycles(byte senderId) {
-  if (state >= 2 && state <= 4)
-    write(senderId, duty_cycle_ans, dNode[senderId - 1]);
+void LedConsensus::ans(byte senderId, char code) {
+  bool valid = false;
+  char ans_code;
+  float value;
+
+  switch (code) {
+    case duty_cycle_ask:
+      valid = (state >= 2 && state <= 4);
+      ans_code = duty_cycle_ans;
+      value = dNode[senderId - 1];
+      break;
+    case mean_ask:
+      valid = ((state >= 4 && state <= 7) || state <= 2);
+      ans_code = mean_ans;
+      value = dAvg[nodeId - 1];
+      break;
+    case real_ask:
+      valid = (state >= 7 || state <= 2);
+      ans_code = real_ans;
+      value = dNodeOverall[nodeId - 1];
+      break;
+  }
+
+  if (valid) {
+    write(senderId, ans_code, value);
+    rcv(senderId, ans_code, value);
+  }
 }
 
-void LedConsensus::rcv_duty_cycles(byte senderId, float value) {
-  if (state != 2)
-    return;
+void LedConsensus::rcv(byte senderId, char code, float value) {
+  bool valid = false;
+  float *variable;
 
   if (!boolArray[senderId - 1]) {
-    boolArray[senderId - 1] = true;
-    nBool++;
-    dColumn[senderId - 1] = value;
-  }
+    switch (code) {
+      case duty_cycle_ans:
+        valid = (state == 2);
+        variable = &(dColumn[senderId - 1]);
+        break;
+      case mean_ans:
+        valid = (state == 4);
+        variable = &(dAvg[senderId - 1]);
+        break;
+      case real_ans:
+        valid = (state == 7);
+        variable = &(dNodeOverall[senderId - 1]);
+        break;
+    }
 
-  if (nBool == nNodes - 1) {
-    state++;
-    resetBool();
-  }
-}
+    if (valid) {
+      boolArray[senderId - 1] = true;
+      nBool++;
+      *variable = value;
 
-void LedConsensus::ask_mean() {
-  unsigned long current_time = millis();
-
-  if (first || current_time - last_time >= timeout) {
-    for (byte i = 1; i <= nNodes; i++) {
-      if (i != nodeId) {
-        write(i, mean_ask, dAvg[nodeId - 1]);
+      if (nBool == nNodes - 1) {
+        state = (state + 1) % 8;
+        resetBool();
       }
     }
-    last_time = current_time;
-  }
-}
-
-void LedConsensus::ans_mean(byte senderId) {
-  if ((state >= 4 && state <= 7) || state <= 2)
-    write(senderId, mean_ans, dAvg[nodeId - 1]);
-  return;
-}
-
-void LedConsensus::rcv_mean(byte senderId, float value) {
-  if (state != 4)
-    return;
-
-  if (!boolArray[senderId - 1]) {
-    boolArray[senderId - 1] = true;
-    nBool++;
-    dAvg[senderId - 1] = value;
-  }
-
-  if (nBool == nNodes - 1) {
-    state++;
-    resetBool();
-  }
-}
-
-void LedConsensus::ask_real_d() {
-  unsigned long current_time = millis();
-
-  if (first || current_time - last_time >= timeout) {
-    for (byte i = 1; i <= nNodes; i++) {
-      if (i != nodeId) {
-        write(i, real_ask, dNodeOverall[nodeId - 1]);
-      }
-    }
-    last_time = current_time;
-  }
-}
-
-void LedConsensus::ans_real_d(byte senderId) {
-  if (state >= 7 || state <= 2)
-    write(senderId, real_ans, dNodeOverall[nodeId - 1]);
-  return;
-}
-
-void LedConsensus::rcv_real_d(byte senderId, float value) {
-  if (state != 7)
-    return;
-
-  if (!boolArray[senderId - 1]) {
-    boolArray[senderId - 1] = true;
-    nBool++;
-    dNodeOverall[senderId - 1] = value;
-  }
-
-  if (nBool == nNodes - 1) {
-    // FINISHED
-    state = 0;
-    resetBool();
   }
 }
 

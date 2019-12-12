@@ -97,15 +97,9 @@ class LedConsensus {
     void calcOverallDC();
     void run();
 
-    void ask_duty_cycles();
-    void ans_duty_cycles(byte senderId);
-    void rcv_duty_cycles(byte senderId, float value);
-    void ask_mean();
-    void ans_mean(byte senderId);
-    void rcv_mean(byte senderId, float value);
-    void ask_real_d();
-    void ans_real_d(byte senderId);
-    void rcv_real_d(byte senderId, float value);
+    void ask();
+    void ans(byte senderId, char code);
+    void rcv(byte senderId, char code, float value);
 };
 
 /*--------Function propotypes--------*/
