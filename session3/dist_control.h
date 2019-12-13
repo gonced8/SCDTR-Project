@@ -53,6 +53,7 @@ class LedConsensus {
     float o_i = 0;
     float L_i = 0;
     float f_i = 0;
+    float cost;
     bool firstPart;
     unsigned long last_time;
     const unsigned int timeout = 250;
@@ -70,11 +71,11 @@ class LedConsensus {
   private:
     void ziCalc(float* zi);
     float dotProd(float x[maxNodes], float y[maxNodes]);
-    float f_iCalc(float* d);
+    bool f_iCalc(float* d);
+    float evaluateCost(float* d);
     bool findMinima();
     void calcMeanVector();
     void calcLagrangeMult();
-
     void resetBool();
 
   public:
