@@ -100,7 +100,7 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   // Consensus setup
   rho = _rho;
   c_i = _c_i;
-  memcpy(y, new_y, sizeof(y));
+  memcpy(y, new_y, nNodes*sizeof(float));
   startCounter();
   firstPart = true;
   for (int i = 0; i < nNodes; i++) {
@@ -139,7 +139,7 @@ float LedConsensus::dotProd(float x[5], float y[5]) {
 }
 
 bool LedConsensus::f_iCalc(float* d) {
-  return (d[nodeId - 1] <= 100 && d[nodeId - 1] >= 0 && dotProd(k, d) >= L_i - o_i);
+  return (d[nodeId - 1] <= 100 + tol && d[nodeId - 1] >= 0 - tol && dotProd(k, d) >= L_i - o_i - tol);
 }
 
 void LedConsensus::setLocalC(float _c_i) {
@@ -192,7 +192,7 @@ void LedConsensus::startCounter() {
 float LedConsensus::evaluateCost(float* local_d) {
   float local_cost = 0;
   for (byte i = 0; i < nNodes; i++)
-    local_cost += y[i] * (local_d[i] - dAvg[i]) + rho / 2 * (local_d[i] - dAvg[i]) * (local_d[i] - dAvg[i]);
+    local_cost += y[i] * (local_d[i] - dAvg[i]) + (rho / 2) * (local_d[i] - dAvg[i]) * (local_d[i] - dAvg[i]);
   local_cost += c_i * local_d[nodeId - 1];
   return local_cost;
 }
@@ -232,6 +232,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
+      Serial.print("Solution 1 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -245,6 +246,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
+      Serial.print("Solution 2 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -257,6 +259,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
+      Serial.print("Solution 3 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -272,6 +275,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
+      Serial.print("Solution 4 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -285,6 +289,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
+      Serial.print("Solution 5 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -484,6 +489,9 @@ void LedConsensus::rcv_real_d(byte senderId, float value) {
     // FINISHED
     state = 0;
     resetBool();
+    for (byte i = 0; i < nNodes; i++) {
+      Serial.print("Led "); Serial.print(i); Serial.print(" "); Serial.println(dNodeOverall[i]);
+    }
   }
 }
 

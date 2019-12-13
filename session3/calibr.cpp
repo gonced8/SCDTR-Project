@@ -54,7 +54,26 @@ void Calibration::run(LedConsensus &ledConsensus) {
         else
           analogWrite(ledPin, 0);
 
-        // Check if end calibration
+        /*// Check if end calibration
+        if (nodeCounter > nNodes) {
+          on = false;
+
+          float o_temp = getLux(measurements[0]);
+          ledConsensus.setLocalO(o_temp);
+
+          for (byte i = 1; i <= nNodes; i++) {
+            k[i - 1] = getLux(measurements[i]) / 100;
+            Serial.println(k[i - 1]);
+          }
+
+          Serial.println("Calibration complete");
+          return;
+        }*/
+
+        action = measure;
+        break;
+
+      case measure:
         if (nodeCounter > nNodes) {
           on = false;
 
@@ -69,11 +88,6 @@ void Calibration::run(LedConsensus &ledConsensus) {
           Serial.println("Calibration complete");
           return;
         }
-
-        action = measure;
-        break;
-
-      case measure:
         measurements[nodeCounter] = analogRead(ldrPin);
 
         nodeCounter++;
