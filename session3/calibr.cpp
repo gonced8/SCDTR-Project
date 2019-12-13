@@ -61,6 +61,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
           float o_temp = getLux(measurements[0]);
           ledConsensus.setLocalO(o_temp);
 
+          Serial.println("Gains");
           for (byte i = 1; i <= nNodes; i++) {
             k[i - 1] = getLux(measurements[i]) / 100;
             Serial.println(k[i - 1]);
@@ -85,7 +86,6 @@ void Calibration::run(LedConsensus &ledConsensus) {
     write(0, calibr_wait, nodeCounter);
     waiting = true;
     last_time = millis();
-    Serial.println("Wrote wait message");
   }
   return;
 }

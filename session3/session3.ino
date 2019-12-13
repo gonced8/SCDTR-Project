@@ -51,7 +51,7 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 50, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 1, y_init);
 
 }
 

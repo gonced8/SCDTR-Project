@@ -319,11 +319,10 @@ void LedConsensus::run() {
     tellStart();
     }
     else {*/
-  //Serial.println(state);
+  Serial.print("State "); Serial.println(state);
 
   float aux;
 
-  Serial.println(state);
   switch (state) {
     // Measure lux
     case 0:
