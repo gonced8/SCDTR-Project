@@ -20,11 +20,11 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr byte R1 = 10;     // [KOhm]
 
-constexpr byte maxIters = 20;
+constexpr byte maxIters = 10;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
-extern const float b[maxNodes];
+extern float b[maxNodes];
 extern float k[maxNodes];
 
 // Control related variables
@@ -62,7 +62,8 @@ class LedConsensus {
     bool first;
     bool handshakes[maxNodes];
     byte nHand;
-    float tol = 0.001;
+    float tol = 0.01;
+    float maxActuation;
 
     byte state;
     float dColumn[maxNodes];
@@ -88,7 +89,8 @@ class LedConsensus {
     void setLocalL(float L_i);
     float getLocalL();
     void getLocalDMean(float* dAvg);
-    void getLocalD(float* d);
+    float getLocalD();
+    float getMeasuredLux();
     void calcNewO();
     float calcExpectedLux();
     void startCounter();
@@ -97,17 +99,15 @@ class LedConsensus {
     void rcvAns(byte senderId);
     void rcvStart(byte senderId);
     void calcOverallDC();
+
+    void checkConsensusError();
+    void setMaxActuation(float calibration_input);
+    
     void run();
 
-    void ask_duty_cycles();
-    void ans_duty_cycles(byte senderId);
-    void rcv_duty_cycles(byte senderId, float value);
-    void ask_mean();
-    void ans_mean(byte senderId);
-    void rcv_mean(byte senderId, float value);
-    void ask_real_d();
-    void ans_real_d(byte senderId);
-    void rcv_real_d(byte senderId, float value);
+    void ask();
+    void ans(byte senderId, char code);
+    void rcv(byte senderId, char code, float value);
 };
 
 /*--------Function propotypes--------*/

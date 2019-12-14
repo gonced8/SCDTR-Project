@@ -8,6 +8,14 @@ bool Calibration::isOn() {
   return on;
 }
 
+float Calibration::getB(int measurement) {
+  float Vldr, Rldr;
+  measurement = map(measurement, 0, 1023, 0, 5000);
+  Vldr = Vcc - measurement;
+  Rldr = (float) Vldr * R1 / (Vcc - Vldr);
+  return log10(Rldr) - m[nodeId - 1] * log10(max_lux);
+}
+
 void Calibration::init(byte id, byte n) {
   nodeId = id;
   nNodes = n;
@@ -55,7 +63,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
           analogWrite(ledPin, 0);
 
         /*// Check if end calibration
-        if (nodeCounter > nNodes) {
+          if (nodeCounter > nNodes) {
           on = false;
 
           float o_temp = getLux(measurements[0]);
@@ -68,7 +76,7 @@ void Calibration::run(LedConsensus &ledConsensus) {
 
           Serial.println("Calibration complete");
           return;
-        }*/
+          }*/
 
         action = measure;
         break;
@@ -77,6 +85,8 @@ void Calibration::run(LedConsensus &ledConsensus) {
         if (nodeCounter > nNodes) {
           on = false;
 
+          b[nodeId - 1] = getB(measurements[nodeId]);
+
           float o_temp = getLux(measurements[0]);
           ledConsensus.setLocalO(o_temp);
 
@@ -84,6 +94,14 @@ void Calibration::run(LedConsensus &ledConsensus) {
             k[i - 1] = getLux(measurements[i]) / 100;
             Serial.println(k[i - 1]);
           }
+
+          //
+          float aux = 0;
+          for (byte i = 0; i < nNodes; i++)
+            aux += 100 * k[i];
+          ledConsensus.setMaxActuation(aux);
+          Serial.print("Max actuation is "); Serial.println(aux);
+          //
 
           Serial.println("Calibration complete");
           return;

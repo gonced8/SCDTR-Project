@@ -5,6 +5,7 @@
 #include "dist_control.h"
 #include "calibr.h"
 #include "sync.h"
+#include "PID.h"
 
 /*----------------- Variables -----------------*/
 can_frame frame;
@@ -14,19 +15,28 @@ float value;
 Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
+PID pid; 
+
+/* Interruption flags */
+volatile boolean sampFlag = false;
 
 byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
 constexpr byte ID0 = 7;
 constexpr byte ID1 = 8;
+
+float u_pid;
+bool saturateInt = false;
+//bool resetAWU = false;
+
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
+void getNodeId();
+void timerIntConfig();
 
-void getNodeId() {
-  nodeId = digitalRead(ID0);
-  nodeId |= digitalRead(ID1) << 1;
+ISR(TIMER1_COMPA_vect) {
+    sampFlag = true; 
 }
-
 /*---------------------------------------------*/
 
 void setup() {
@@ -51,7 +61,8 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 1, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 10, y_init);
+  pid.init(10, 1, 0, 0.01, 0.1);
 
 }
 
@@ -68,8 +79,21 @@ void loop() {
 
   else {
     ledConsensus.run();
+    //
+    if (sampFlag) {
+      // Calc pid duty cycle given reference and new measurement
+      u_pid = pid.calc(ledConsensus.getLocalD()*k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
+      // Write new duty cycle
+      analogWrite(ledPin, constrain((int) (u_pid*2.55 + 0.5), 0, 255));
+      // See saturation
+      saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
+      /*---------------
+      Communication of hub to PC will go here (?)
+      ---------------*/
+      sampFlag = false; 
+    }
+    //
   }
-
   delay(5);
 }
 
@@ -132,29 +156,34 @@ void handleNewMessages() {
         break;
 */
       // Consensus run
-      case duty_cycle_ask:
-        ledConsensus.ans_duty_cycles(senderId) ;
-        break;
-
-      case duty_cycle_ans:
-        ledConsensus.rcv_duty_cycles(senderId, value);
-        break;
-
-      case mean_ask:
-        ledConsensus.ans_mean(senderId);
-        break;
-
-      case mean_ans:
-        ledConsensus.rcv_mean(senderId, value);
-        break;
-
-      case real_ask:
-        ledConsensus.ans_real_d(senderId);
-        break;
-
-      case real_ans:
-        ledConsensus.rcv_real_d(senderId, value);
-        break;
+      default:
+        if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
+          ledConsensus.ans(senderId, code);
+        else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
+          ledConsensus.rcv(senderId, code, value);
     }
   }
+}
+
+void getNodeId() {
+  nodeId = digitalRead(ID0);
+  nodeId |= digitalRead(ID1) << 1;
+}
+
+void timerIntConfig() {
+/* Configures a timer interruption using TIMER1 (for sampling) */
+    cli();
+    TCCR1A = 0;
+    TCCR1B = 0;
+    TCNT1 = 0;     //reset counter
+                   // OCR1A = desired_period/clock_period – 1 // = clock_freq/desired_freq - 1
+                   //= (10 / 500*10^-6) / 1 - 1 = 19999
+    OCR1A = 19999; // corresponds to 10ms (100Hz sampling!)
+    TCCR1B |= (1 << WGM12); // CTC, top is OCRA
+    // Set prescaler for 8
+    TCCR1B |= (1 << CS11);
+    // enable timer compare interrupt
+    // enable compare A
+    TIMSK1 |= (1 << OCIE1A);
+    sei();
 }

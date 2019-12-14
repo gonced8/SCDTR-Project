@@ -29,8 +29,10 @@ class Calibration {
     byte nHand;
     unsigned long last_time;
     const unsigned int timeout = 500;
+    const float max_lux = 100;
   public:
     bool isOn();
+    float getB(int measurement);
     void init(byte id, byte n);
     void run(LedConsensus &ledConsensus);
     void receive_answer(byte senderId, float value);
