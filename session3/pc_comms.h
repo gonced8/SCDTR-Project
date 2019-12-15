@@ -4,7 +4,7 @@
 #define PCCOMMS_H
 
 #include <Arduino.h>
-#include "comm_codes.h"
+#include "can_comms.h"
 
 class PcComms {
     /*-------Variable declaration-------*/
@@ -12,7 +12,9 @@ class PcComms {
     byte nodeId;
     byte nNodes;
     bool first;
-    
+    unsigned long last_time;
+    unsigned long timeout = 500;
+
     bool received_occupancy;
     bool received_lower_bound_occupied;
     bool received_lower_bound_unoccupied;
@@ -26,8 +28,8 @@ class PcComms {
     bool received_set_unoccupied_value;
     bool received_set_cost;
     bool received_set_restart;
-    
-    bool occupancy;
+
+    float occupancy;
     float lower_bound_occupied;
     float lower_bound_unoccupied;
     float current_lower_bound;
@@ -39,11 +41,26 @@ class PcComms {
     float set_occupied_value;
     float set_unoccupied_value;
     float set_cost;
-    float set_restart; 
+    float set_restart;
+
+    byte id_occupancy;
+    byte id_lower_bound_occupied;
+    byte id_lower_bound_unoccupied;
+    byte id_current_lower_bound;
+    byte id_current_external;
+    byte id_current_reference;
+    byte id_current_cost;
+    byte id_time_since_restart;
+    byte id_set_occupied;
+    byte id_set_occupied_value;
+    byte id_set_unoccupied_value;
+    byte id_set_cost;
+    byte id_set_restart;
 
   public:
     /*--------Function propotypes--------*/
     void init(byte _nodeId, byte _nNodes);
+    void ask(byte to, char code);
     bool getCurrentOccupancy(byte luminaire);
     float getLowerBoundOccupied(byte luminaire);
     float getLowerBoundUnoccupied(byte luminaire);
