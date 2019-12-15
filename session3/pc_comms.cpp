@@ -93,9 +93,10 @@ void PcComms::ask() {
 
     if (!received_set_restart)
       write(id_set_restart, set_restart_ask, 0);
-  }
 
-  last_time = current_time;
+    first = false;
+    last_time = current_time;
+  }
 }
 
 void PcComms::ans(byte senderId, char code) {
@@ -138,6 +139,63 @@ void PcComms::ans(byte senderId, char code) {
       break;
     case set_restart_ask:
       write(senderId, set_restart_ans, 0);
+      break;
+  }
+}
+
+void PcComms::rcv(byte senderId, char code, float value) {
+  switch (code) {
+    case occupancy_ask:
+      received_occupancy = true;
+      occupancy = value;
+      break;
+    case lower_bound_occupied_ask:
+      received_lower_bound_occupied = true;
+      lower_bound_occupied = value;
+      break;
+    case lower_bound_unoccupied_ask:
+      received_lower_bound_unoccupied = true;
+      lower_bound_unoccupied = value;
+      break;
+    case current_lower_bound_ask:
+      received_current_lower_bound = true;
+      current_lower_bound = value;
+      break;
+    case current_external_ask:
+      received_current_external = true;
+      current_external = value;
+      break;
+    case current_reference_ask:
+      received_current_reference = true;
+      current_reference = value;
+      break;
+    case current_cost_ask:
+      received_current_cost = true;
+      current_cost = value;
+      break;
+    case time_since_restart_ask:
+      received_time_since_restart = true;
+      time_since_restart = value;
+      break;
+    case set_occupied_ask:
+      received_set_occupied = true;
+      set_occupied = value;
+      break;
+    case set_occupied_value_ask:
+      received_set_occupied_value = true;
+      set_occupied_value = value;
+      break;
+    case set_unoccupied_value_ask:
+      received_set_unoccupied_value = true;
+      set_unoccupied_value = value;
+      break;
+    case set_cost_ask:
+      received_set_cost = true;
+      set_cost = value;
+      break;
+    case set_restart_ask:
+      received_set_restart = true;
+      set_restart = value;
       break;
   }
 }

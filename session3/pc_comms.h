@@ -62,6 +62,7 @@ class PcComms {
     void init(byte _nodeId, byte _nNodes);
     void ask();
     void ans(byte senderId, char code);
+    void rcv(byte senderId, char code, float value);
     void SerialDecode();
 };
 
