@@ -146,56 +146,82 @@ void PcComms::ans(byte senderId, char code) {
 void PcComms::rcv(byte senderId, char code, float value) {
   switch (code) {
     case occupancy_ask:
-      received_occupancy = true;
-      occupancy = value;
+      if (!received_occupancy) {
+        received_occupancy = true;
+        occupancy = value;
+      }
       break;
     case lower_bound_occupied_ask:
-      received_lower_bound_occupied = true;
-      lower_bound_occupied = value;
+      if (!received_lower_bound_occupied) {
+        received_lower_bound_occupied = true;
+        lower_bound_occupied = value;
+      }
       break;
     case lower_bound_unoccupied_ask:
-      received_lower_bound_unoccupied = true;
-      lower_bound_unoccupied = value;
+      if (!received_lower_bound_unoccupied) {
+        received_lower_bound_unoccupied = true;
+        lower_bound_unoccupied = value;
+      }
       break;
     case current_lower_bound_ask:
-      received_current_lower_bound = true;
-      current_lower_bound = value;
+      if (!received_current_lower_bound) {
+        received_current_lower_bound = true;
+        current_lower_bound = value;
+      }
       break;
     case current_external_ask:
-      received_current_external = true;
-      current_external = value;
+      if (!received_current_external) {
+        received_current_external = true;
+        current_external = value;
+      }
       break;
     case current_reference_ask:
-      received_current_reference = true;
-      current_reference = value;
+      if (!received_current_reference) {
+        received_current_reference = true;
+        current_reference = value;
+      }
       break;
     case current_cost_ask:
-      received_current_cost = true;
-      current_cost = value;
+      if (!received_current_cost) {
+        received_current_cost = true;
+        current_cost = value;
+      }
       break;
     case time_since_restart_ask:
-      received_time_since_restart = true;
-      time_since_restart = value;
+      if (!received_time_since_restart) {
+        received_time_since_restart = true;
+        time_since_restart = value;
+      }
       break;
     case set_occupied_ask:
-      received_set_occupied = true;
-      set_occupied = value;
+      if (!received_set_occupied) {
+        received_set_occupied = true;
+        set_occupied = value;
+      }
       break;
     case set_occupied_value_ask:
-      received_set_occupied_value = true;
-      set_occupied_value = value;
+      if (!received_set_occupied_value) {
+        received_set_occupied_value = true;
+        set_occupied_value = value;
+      }
       break;
     case set_unoccupied_value_ask:
-      received_set_unoccupied_value = true;
-      set_unoccupied_value = value;
+      if (!received_set_unoccupied_value) {
+        received_set_unoccupied_value = true;
+        set_unoccupied_value = value;
+      }
       break;
     case set_cost_ask:
-      received_set_cost = true;
-      set_cost = value;
+      if (!received_set_cost) {
+        received_set_cost = true;
+        set_cost = value;
+      }
       break;
     case set_restart_ask:
-      received_set_restart = true;
-      set_restart = value;
+      if (!received_set_restart) {
+        received_set_restart = true;
+        set_restart = value;
+      }
       break;
   }
 }
