@@ -17,12 +17,38 @@ const constexpr char ctrl_recv = 9;
 const constexpr char consensus_tell = 10;
 const constexpr char consensus_rcv = 11;
 
-// Always the last code
 const constexpr char duty_cycle_ask = 12;
 const constexpr char duty_cycle_ans = 13;
 const constexpr char mean_ask = 14;
 const constexpr char mean_ans = 15;
 const constexpr char real_ask = 16;
 const constexpr char real_ans = 17;
+
+const constexpr char occupancy_ask = 18;
+const constexpr char occupancy_ans = 19;
+const constexpr char lower_bound_occupied_ask = 20;
+const constexpr char lower_bound_occupied_ans = 21;
+const constexpr char lower_bound_unoccupied_ask = 22;
+const constexpr char lower_bound_unoccupied_ans = 23;
+const constexpr char current_lower_bound_ask = 24;
+const constexpr char current_lower_bound_ans = 25;
+const constexpr char current_external_ask = 26;
+const constexpr char current_external_ans = 27;
+const constexpr char current_reference_ask = 28;
+const constexpr char current_reference_ans = 29;
+const constexpr char current_cost_ask = 30;
+const constexpr char current_cost_ans = 31;
+const constexpr char time_since_restart_ask = 32;
+const constexpr char time_since_restart_ans = 33;
+const constexpr char set_occupied_ask = 34;
+const constexpr char set_occupied_ans = 35;
+const constexpr char set_occupied_value_ask = 36;
+const constexpr char set_occupied_value_ans = 37;
+const constexpr char set_unoccupied_value_ask = 38;
+const constexpr char set_unoccupied_value_ans = 39;
+const constexpr char set_cost_ask = 40;
+const constexpr char set_cost_ans = 41;
+const constexpr char set_restart_ask = 42;
+const constexpr char set_restart_ans = 43;
 
 #endif //COM_CODES
