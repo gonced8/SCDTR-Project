@@ -51,52 +51,7 @@ void PcComms::init(byte _nodeId, byte _nNodes) {
   id_set_restart = 0;
 }
 
-bool PcComms::getCurrentOccupancy(byte luminaire) {
-  bool occupancy = 0;
-  return occupancy;
-}
-float PcComms::getLowerBoundOccupied(byte luminaire) {
-  float Lux = 0;
-  return Lux;
-}
-float PcComms::getLowerBoundUnoccupied(byte luminaire) {
-  float Lux = 0;
-  return Lux;
-}
-float PcComms::getCurrentLowerBound(byte luminaire) {
-  float Lux = 0;
-  return Lux;
-}
-float PcComms::getCurrentExternal(byte luminaire) {
-  float Lux = 0;
-  return Lux;
-}
-float PcComms::getCurrentReference(byte luminaire) {
-  float PWM = 0;
-  return PWM;
-}
-float PcComms::getCurrentCost(byte luminaire) {
-  float cost = 0;
-  return cost;
-}
-float PcComms::getTimeSinceRestart(byte luminaire) {
-  float time = 0;
-  return time;
-}
-bool PcComms::setOccupied(byte luminaire, byte state) {
-  return true;
-}
-bool PcComms::setOccupiedValue(byte luminaire, float Lux) {
-  return true;
-}
-bool PcComms::setUnoccupiedValue(byte luminaire, float Lux) {
-  return true;
-}
-bool PcComms::setCost(byte luminaire, float cost) {
-  return true;
-}
-
-void PcComms::ask(byte to, char code) {
+void PcComms::ask() {
   unsigned long current_time = millis();
 
   if (first || current_time - last_time > timeout) {
@@ -141,6 +96,50 @@ void PcComms::ask(byte to, char code) {
   }
 
   last_time = current_time;
+}
+
+void PcComms::ans(byte senderId, char code) {
+  switch (code) {
+    case occupancy_ask:
+      write(senderId, occupancy_ans, 0);
+      break;
+    case lower_bound_occupied_ask:
+      write(senderId, lower_bound_occupied_ans, 0);
+      break;
+    case lower_bound_unoccupied_ask:
+      write(senderId, lower_bound_unoccupied_ans, 0);
+      break;
+    case current_lower_bound_ask:
+      write(senderId, current_lower_bound_ans, 0);
+      break;
+    case current_external_ask:
+      write(senderId, current_external_ans, 0);
+      break;
+    case current_reference_ask:
+      write(senderId, current_reference_ans, 0);
+      break;
+    case current_cost_ask:
+      write(senderId, current_cost_ans, 0);
+      break;
+    case time_since_restart_ask:
+      write(senderId, time_since_restart_ans, 0);
+      break;
+    case set_occupied_ask:
+      write(senderId, set_occupied_ans, 0);
+      break;
+    case set_occupied_value_ask:
+      write(senderId, set_occupied_value_ans, 0);
+      break;
+    case set_unoccupied_value_ask:
+      write(senderId, set_unoccupied_value_ans, 0);
+      break;
+    case set_cost_ask:
+      write(senderId, set_cost_ans, 0);
+      break;
+    case set_restart_ask:
+      write(senderId, set_restart_ans, 0);
+      break;
+  }
 }
 
 void PcComms::SerialDecode() {

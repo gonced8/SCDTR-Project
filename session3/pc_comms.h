@@ -60,20 +60,8 @@ class PcComms {
   public:
     /*--------Function propotypes--------*/
     void init(byte _nodeId, byte _nNodes);
-    void ask(byte to, char code);
-    bool getCurrentOccupancy(byte luminaire);
-    float getLowerBoundOccupied(byte luminaire);
-    float getLowerBoundUnoccupied(byte luminaire);
-    float getCurrentLowerBound(byte luminaire);
-    float getCurrentExternal(byte luminaire);
-    float getCurrentReference(byte luminaire);
-    float getCurrentCost(byte luminaire);
-    float getTimeSinceRestart(byte luminaire);
-    bool setOccupied(byte luminaire, byte state);
-    bool setOccupiedValue(byte luminaire, float Lux);
-    bool setUnoccupiedValue(byte luminaire, float Lux);
-    bool setCost(byte luminaire, float cost);
-    bool setRestart();
+    void ask();
+    void ans(byte senderId, char code);
     void SerialDecode();
 };
 
