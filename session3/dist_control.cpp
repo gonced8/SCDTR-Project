@@ -357,7 +357,7 @@ void LedConsensus::run() {
 
   float aux;
 
-  Serial.println(state);
+  //Serial.println(state);
   switch (state) {
     // Measure lux
     case 0:
@@ -384,7 +384,7 @@ void LedConsensus::run() {
     // Receive duty cycles
     case 2:
       ask();
-      // -------
+      /*// -------
       if (sampFlag && !writeFlag && first_pid) {
         float lux_ref = getLocalD() * k[nodeId - 1]; 
         aux = 0;
@@ -393,24 +393,24 @@ void LedConsensus::run() {
             aux += dNodeOverall[i]*k[i];
         }
         u_pid = pid.calc(lux_ref, getLux(analogRead(ldrPin)) - aux, saturateInt);
-        Serial.print("PID u"); Serial.println(u_pid);
+        //Serial.print("PID u"); Serial.println(u_pid);
         u_pid = constrain((int)((u_pid + getLocalD())*2.55 + 0.5), 0, 255);
         saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
         first_pid = false;
       }
-      //-------
+      //-------*/
       break;
 
     // Compute average
     case 3:
-      //-------
+      /*//-------
       if (sampFlag && !writeFlag && !first_pid) { // flags are correct in both ifs!
         analogWrite(ledPin, u_pid);
-        Serial.println("PID wrote");
+        //Serial.println("PID wrote");
         first_pid = true;
         writeFlag = true;
       }
-      //-------
+      //-------*/
       calcMeanVector();
       state++;
       break;
@@ -424,7 +424,7 @@ void LedConsensus::run() {
     case 5:
       calcLagrangeMult();
       remainingIters--;
-      Serial.print("Remaining iterations: "); Serial.println(remainingIters);
+      //Serial.print("Remaining iterations: "); Serial.println(remainingIters);
       if (remainingIters > 0)
         state = 1;
       else
@@ -435,7 +435,7 @@ void LedConsensus::run() {
     case 6:
       dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
       Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
-      //analogWrite(ledPin, dNodeOverall[nodeId - 1]); // TRY USING THESE PID GAINS WITH THIS WRITE ON!!!!!
+      analogWrite(ledPin, (int) (dNodeOverall[nodeId - 1]*2.55 + 0.5)); 
       state++;
       break;
 

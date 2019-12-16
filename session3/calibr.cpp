@@ -134,5 +134,5 @@ void Calibration::send_answer(byte senderId, float value) {
   if (value <= nodeCounter)
     write(senderId, calibr_answer, value);
 
-  Serial.print("Sync: Answered node "); Serial.println(senderId);
+  Serial.print("Calibr: Answered node "); Serial.println(senderId);
 }

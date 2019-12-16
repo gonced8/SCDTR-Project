@@ -1,6 +1,7 @@
 CC = g++
-LDIR = boost_1_71_0
-CFLAGS = -Wall -std=c++11 -O3 -I$(LDIR) -pthread
+LDIR1 = boost_1_71_0
+LDIR2 = ../session3/
+CFLAGS = -Wall -std=c++11 -O3 -I$(LDIR1) -I$(LDIR2) -pthread
 
 .PHONY: all run clean
 

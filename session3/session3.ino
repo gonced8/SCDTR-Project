@@ -3,6 +3,7 @@
 
 #include "can_comms.h"
 #include "dist_control.h"
+#include "pc_comms.h"
 #include "calibr.h"
 #include "sync.h"
 #include "PID.h"
@@ -16,6 +17,7 @@ Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
 PID pid;
+PcComms pcComms;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
@@ -64,8 +66,9 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 10, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 1, y_init);
   pid.init(0.5, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
+  pcComms.init(nodeId, nNodes);
 
   timerIntConfig();
 
@@ -84,21 +87,21 @@ void loop() {
 
   else {
     ledConsensus.run();
-    //
-    if (sampFlag) {
-      /*// Calc pid duty cycle given reference and new measurement
+    // 
+    /*if (sampFlag) {
+      // Calc pid duty cycle given reference and new measurement
         //if (ledConsensus.finished()) {
         u_pid = pid.calc(ledConsensus.getLocalD() * k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
         // Write new duty cycle
         analogWrite(ledPin, constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         Serial.print("PID wrote "); Serial.println(constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         // See saturation
-        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);*/
+        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
 
       if (!sendFlag) {
         /*---------------
           Communication of hub to PC will go here (?)
-          ---------------*/
+          ---------------
         sendFlag = true;
       }
       if (writeFlag) {
@@ -106,9 +109,15 @@ void loop() {
         sampFlag = false;
       }
     }
-    //
+    //*/
+
+    if (Serial.available() > 0) {
+      Serial.println("Entered available");
+      pcComms.SerialDecode();
+    }
+    pcComms.ask();
   }
-  delay(5);
+  delay(10);
 }
 
 void handleNewMessages() {
@@ -128,9 +137,9 @@ void handleNewMessages() {
     decodeMessage(frame, senderId, code, value);
 
     /*Serial.print("Receiving: ");
-    Serial.print("\tFrom "); Serial.print(senderId);
-    Serial.print("\tCode "); Serial.print((byte)code);
-    Serial.print("\tValue "); Serial.println(value);*/
+      Serial.print("\tFrom "); Serial.print(senderId);
+      Serial.print("\tCode "); Serial.print((byte)code);
+      Serial.print("\tValue "); Serial.println(value);*/
 
     switch (code) {
       // Synchronize
@@ -175,6 +184,11 @@ void handleNewMessages() {
           ledConsensus.ans(senderId, code);
         else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
           ledConsensus.rcv(senderId, code, value);
+        else if (code >= occupancy_ask && code <= set_restart_ask)
+          pcComms.ans(senderId, code);
+        else if (code >= occupancy_ans && code <= set_restart_ans)
+          pcComms.rcv(senderId, code, value);
+
     }
   }
 }
