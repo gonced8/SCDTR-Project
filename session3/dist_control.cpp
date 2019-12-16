@@ -4,6 +4,17 @@
 #include <math.h>
 #include "dist_control.h"
 
+#include "PID.h"
+extern volatile boolean sampFlag;
+extern bool writeFlag;
+float u_pid;
+float u_pid_tot;
+extern PID pid;
+extern bool saturateInt;
+float lux_others;
+
+bool first_pid = true;
+
 /*-------Variable definition--------*/
 // LDR calibration
 const float m[3] = { -0.67, -0.72, -0.718}; // LDR calibration
@@ -223,7 +234,7 @@ bool LedConsensus::findMinima() {
   if (f_iCalc(d_temp)) { // Solution is feasible
     memcpy(d_best, d_temp, nNodes * sizeof(float));
     cost_best = evaluateCost(d_temp);
-    Serial.println("Interior is feasible");
+    //Serial.println("Interior is feasible");
   }
   else {
     // Else continue looking for solutions on the borders
@@ -236,7 +247,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
-      Serial.print("Solution 1 cost "); Serial.println(cost_temp);
+      //Serial.print("Solution 1 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -250,7 +261,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
-      Serial.print("Solution 2 cost "); Serial.println(cost_temp);
+      //Serial.print("Solution 2 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -263,7 +274,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
-      Serial.print("Solution 3 cost "); Serial.println(cost_temp);
+      //Serial.print("Solution 3 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -279,7 +290,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
-      Serial.print("Solution 4 cost "); Serial.println(cost_temp);
+      //Serial.print("Solution 4 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -293,7 +304,7 @@ bool LedConsensus::findMinima() {
 
     if (f_iCalc(d_temp)) { // Solution is feasible
       cost_temp = evaluateCost(d_temp);
-      Serial.print("Solution 5 cost "); Serial.println(cost_temp);
+      //Serial.print("Solution 5 cost "); Serial.println(cost_temp);
       if (cost_temp < cost_best) {
         memcpy(d_best, d_temp, nNodes * sizeof(float));
         cost_best = cost_temp;
@@ -321,7 +332,7 @@ void LedConsensus::calcMeanVector() {
 void LedConsensus::calcLagrangeMult() {
   for (byte i = 0; i < nNodes; i++) {
     y[i] = y[i] + rho * (dNode[i] - dAvg[i]);
-    Serial.print("y"); Serial.print(i); Serial.print(" is "); Serial.println(y[i]);
+    //Serial.print("y"); Serial.print(i); Serial.print(" is "); Serial.println(y[i]);
   }
 }
 
@@ -356,7 +367,6 @@ void LedConsensus::run() {
       Serial.print("New o is "); Serial.println(aux);
       setLocalO(aux);
       startCounter();
-
       checkConsensusError();
 
       for (byte i = 1; i <= nNodes; i++) {
@@ -374,10 +384,33 @@ void LedConsensus::run() {
     // Receive duty cycles
     case 2:
       ask();
+      // -------
+      if (sampFlag && !writeFlag && first_pid) {
+        float lux_ref = getLocalD() * k[nodeId - 1]; 
+        aux = 0;
+        for(byte i = 0; i<nNodes; i++){
+          if (i != nodeId - 1)
+            aux += dNodeOverall[i]*k[i];
+        }
+        u_pid = pid.calc(lux_ref, getLux(analogRead(ldrPin)) - aux, saturateInt);
+        Serial.print("PID u"); Serial.println(u_pid);
+        u_pid = constrain((int)((u_pid + getLocalD())*2.55 + 0.5), 0, 255);
+        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
+        first_pid = false;
+      }
+      //-------
       break;
 
     // Compute average
     case 3:
+      //-------
+      if (sampFlag && !writeFlag && !first_pid) { // flags are correct in both ifs!
+        analogWrite(ledPin, u_pid);
+        Serial.println("PID wrote");
+        first_pid = true;
+        writeFlag = true;
+      }
+      //-------
       calcMeanVector();
       state++;
       break;
@@ -401,7 +434,8 @@ void LedConsensus::run() {
     // Update led duty cycle
     case 6:
       dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
-      analogWrite(ledPin, dNodeOverall[nodeId - 1] * 255.0 / 100);
+      Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
+      //analogWrite(ledPin, dNodeOverall[nodeId - 1]); // TRY USING THESE PID GAINS WITH THIS WRITE ON!!!!!
       state++;
       break;
 
@@ -521,4 +555,8 @@ void LedConsensus::resetBool() {
   }
   nBool = 0;
   first = true;
+}
+
+bool LedConsensus::finished() {
+  return remainingIters == 0;
 }

@@ -15,17 +15,19 @@ float value;
 Calibration calibrator;
 Sync sync;
 LedConsensus ledConsensus;
-PID pid; 
+PID pid;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
+bool writeFlag = false;
+volatile bool sendFlag = false;
 
 byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
 constexpr byte ID0 = 7;
 constexpr byte ID1 = 8;
 
-float u_pid;
+//float u_pid;
 bool saturateInt = false;
 //bool resetAWU = false;
 
@@ -35,7 +37,8 @@ void getNodeId();
 void timerIntConfig();
 
 ISR(TIMER1_COMPA_vect) {
-    sampFlag = true; 
+  sampFlag = true;
+  sendFlag = false;
 }
 /*---------------------------------------------*/
 
@@ -62,7 +65,9 @@ void setup() {
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
   ledConsensus.init(nodeId, nNodes, 0.1, 10, y_init);
-  pid.init(10, 1, 0, 0.01, 0.1);
+  pid.init(0.5, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
+
+  timerIntConfig();
 
 }
 
@@ -81,16 +86,25 @@ void loop() {
     ledConsensus.run();
     //
     if (sampFlag) {
-      // Calc pid duty cycle given reference and new measurement
-      u_pid = pid.calc(ledConsensus.getLocalD()*k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
-      // Write new duty cycle
-      analogWrite(ledPin, constrain((int) (u_pid*2.55 + 0.5), 0, 255));
-      // See saturation
-      saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
-      /*---------------
-      Communication of hub to PC will go here (?)
-      ---------------*/
-      sampFlag = false; 
+      /*// Calc pid duty cycle given reference and new measurement
+        //if (ledConsensus.finished()) {
+        u_pid = pid.calc(ledConsensus.getLocalD() * k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
+        // Write new duty cycle
+        analogWrite(ledPin, constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
+        Serial.print("PID wrote "); Serial.println(constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
+        // See saturation
+        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);*/
+
+      if (!sendFlag) {
+        /*---------------
+          Communication of hub to PC will go here (?)
+          ---------------*/
+        sendFlag = true;
+      }
+      if (writeFlag) {
+        writeFlag = false;
+        sampFlag = false;
+      }
     }
     //
   }
@@ -113,10 +127,10 @@ void handleNewMessages() {
   while ( cf_stream.get(frame) ) {
     decodeMessage(frame, senderId, code, value);
 
-    Serial.print("Receiving: ");
+    /*Serial.print("Receiving: ");
     Serial.print("\tFrom "); Serial.print(senderId);
     Serial.print("\tCode "); Serial.print((byte)code);
-    Serial.print("\tValue "); Serial.println(value);
+    Serial.print("\tValue "); Serial.println(value);*/
 
     switch (code) {
       // Synchronize
@@ -145,16 +159,16 @@ void handleNewMessages() {
       /*case duty_cycle_ack:
         ledConsensus.receive_ack(senderId);
         break;*/
-/*
-      // Consensus initial communication
-      case consensus_tell:
-        ledConsensus.rcvStart(senderId);
-        break;
+      /*
+            // Consensus initial communication
+            case consensus_tell:
+              ledConsensus.rcvStart(senderId);
+              break;
 
-      case consensus_rcv:
-        ledConsensus.rcvAns(senderId);
-        break;
-*/
+            case consensus_rcv:
+              ledConsensus.rcvAns(senderId);
+              break;
+      */
       // Consensus run
       default:
         if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
@@ -171,19 +185,19 @@ void getNodeId() {
 }
 
 void timerIntConfig() {
-/* Configures a timer interruption using TIMER1 (for sampling) */
-    cli();
-    TCCR1A = 0;
-    TCCR1B = 0;
-    TCNT1 = 0;     //reset counter
-                   // OCR1A = desired_period/clock_period – 1 // = clock_freq/desired_freq - 1
-                   //= (10 / 500*10^-6) / 1 - 1 = 19999
-    OCR1A = 19999; // corresponds to 10ms (100Hz sampling!)
-    TCCR1B |= (1 << WGM12); // CTC, top is OCRA
-    // Set prescaler for 8
-    TCCR1B |= (1 << CS11);
-    // enable timer compare interrupt
-    // enable compare A
-    TIMSK1 |= (1 << OCIE1A);
-    sei();
+  /* Configures a timer interruption using TIMER1 (for sampling) */
+  cli();
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1 = 0;     //reset counter
+  // OCR1A = desired_period/clock_period – 1 // = clock_freq/desired_freq - 1
+  //= (10 / 500*10^-6) / 1 - 1 = 19999
+  OCR1A = 19999; // corresponds to 10ms (100Hz sampling!)
+  TCCR1B |= (1 << WGM12); // CTC, top is OCRA
+  // Set prescaler for 8
+  TCCR1B |= (1 << CS11);
+  // enable timer compare interrupt
+  // enable compare A
+  TIMSK1 |= (1 << OCIE1A);
+  sei();
 }

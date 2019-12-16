@@ -14,7 +14,7 @@ volatile can_frame_stream cf_stream = can_frame_stream();
 /*--------Function definition--------*/
 MCP2515::ERROR write(byte to, byte code, float value) {
   uint32_t id = 0;
-  Serial.print("Value inside write is "); Serial.println(value);
+  //Serial.print("Value inside write is "); Serial.println(value);
   id |= (code & code_mask) << shiftCode;    // 7 bits for counter
   id |= (to & mask) << shiftToId;           // 2 bits for to id
   id |= (nodeId & mask) << shiftFromId;     // 2 bits for from id

@@ -99,9 +99,10 @@ class LedConsensus {
     void rcvAns(byte senderId);
     void rcvStart(byte senderId);
     void calcOverallDC();
-
     void checkConsensusError();
     void setMaxActuation(float calibration_input);
+
+    bool finished();
     
     void run();
 
