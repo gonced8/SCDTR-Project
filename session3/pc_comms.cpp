@@ -249,6 +249,15 @@ void PcComms::SerialDecode() {
   byte luminaire = (byte) message[0];       // CORRECT THIS IN ASIO
   char code = message[1];
 
+  bool own = luminaire == nodeId;
+  char answer[8];
+  float value_aux = 0.0;
+  if (own) {
+    answer[0] = '!';
+    answer[2] = (char) nodeId;
+    answer[7] = '\n';
+    memcpy(answer + 3, &value_aux, sizeof(float));
+  }
 
   Serial.print("Luminaire ");
   Serial.println(luminaire);
@@ -257,88 +266,170 @@ void PcComms::SerialDecode() {
 
   switch (code) {
     case occupancy_ask:
-      received_occupancy = false;
-      id_occupancy = luminaire;
-      //Serial.print("! o "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunbyte);
+      if (!own) {
+        received_occupancy = false;
+        id_occupancy = luminaire;
+      }
+      else {
+        answer[1] = occupancy_ans;
+        value_aux = (float) deskOccupancy;
+        memcpy(answer + 3, &value_aux, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case lower_bound_occupied_ask:
-      received_lower_bound_occupied = false;
-      id_lower_bound_occupied = luminaire;
-      //Serial.print("! O "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_lower_bound_occupied = false;
+        id_lower_bound_occupied = luminaire;
+      }
+      else {
+        answer[1] = lower_bound_occupied_ans;
+        memcpy(answer + 3, &luxRefOcc, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case lower_bound_unoccupied_ask:
-      received_lower_bound_unoccupied = false;
-      id_lower_bound_unoccupied = luminaire;
-      //Serial.print("! U "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_lower_bound_unoccupied = false;
+        id_lower_bound_unoccupied = luminaire;
+      }
+      else {
+        answer[1] = lower_bound_unoccupied_ans;
+        memcpy(answer + 3, &luxRefUnocc, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case current_lower_bound_ask:
-      received_current_lower_bound = false;
-      id_current_lower_bound = luminaire;
-      //Serial.print("! L "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_current_lower_bound = false;
+        id_current_lower_bound = luminaire;
+      }
+      else {
+        answer[1] = current_lower_bound_ans;
+        memcpy(answer + 3, &ledConsensus.L_i, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case current_external_ask:
-      received_current_external = false;
-      id_current_external = luminaire;
-      //Serial.print("! x "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_current_external = false;
+        id_current_external = luminaire;
+      }
+      else {
+        answer[1] = current_external_ans;
+        memcpy(answer + 3, &ledConsensus.o_i, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case current_reference_ask:
-      received_current_reference = false;
-      id_current_reference = luminaire;
-      //Serial.print("! r "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_current_reference = false;
+        id_current_reference = luminaire;
+      }
+      else {
+        answer[1] = current_reference_ans;
+        value_aux = millis() / 1000.0;
+        memcpy(answer + 3, &value_aux, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case current_cost_ask:
-      received_current_cost = false;
-      id_current_cost = luminaire;
-      //Serial.print("! c "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_current_cost = false;
+        id_current_cost = luminaire;
+      }
+      else {
+        answer[1] = current_cost_ans;
+        memcpy(answer + 3, &ledConsensus.c_i, sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case time_since_restart_ask:
-      received_time_since_restart = false;
-      id_time_since_restart = luminaire;
-      //Serial.print("! t "); Serial.print(luminaire); Serial.print(" "); Serial.println(multifunfloat);
+      if (!own) {
+        received_time_since_restart = false;
+        id_time_since_restart = luminaire;
+      }
+      else {
+        answer[1] = time_since_restart_ans;
+        memcpy(answer + 3, &ledConsensus.dNodeOverall[nodeId - 1], sizeof(float));
+        Serial.write(answer, 8);
+      }
       break;
 
     case set_occupied_ask:
-      received_set_occupied = false;
-      id_set_occupied = luminaire;
-      set_occupied = *(float *)(message+2);
-      //Serial.println("! ack");
+      set_occupied = *(float *)(message + 2);
+      if (!own) {
+        received_set_occupied = false;
+        id_set_occupied = luminaire;
+      }
+      else {
+        deskOccupancy = set_occupied == 1;
+        if (deskOccupancy)
+          ledConsensus.L_i = luxRefOcc;
+        else
+          ledConsensus.L_i = luxRefUnocc;
+
+        answer[1] = set_occupied_ans;
+        Serial.write(answer, 8);
+      }
       break;
 
     case set_occupied_value_ask:
-      received_set_occupied_value = false;
-      id_set_occupied_value = luminaire;
-      set_occupied_value = *(float *)(message+2);
-      //Serial.println("! ack");
+      set_occupied_value = *(float *)(message + 2);
+      if (!own) {
+        received_set_occupied_value = false;
+        id_set_occupied_value = luminaire;
+      }
+      else {
+        luxRefOcc = set_occupied_value;
+        if (deskOccupancy)
+          ledConsensus.L_i = luxRefOcc;
+
+        answer[1] = set_occupied_value_ans;
+        Serial.write(answer, 8);
+      }
       break;
 
     case set_unoccupied_value_ask:
-      received_set_unoccupied_value = false;
-      id_set_unoccupied_value = luminaire;
-      set_unoccupied_value = *(float *)(message+2);
-      Serial.print("Float ");
-      Serial.println(set_unoccupied_value);
-      //Serial.println("! ack");
+      set_unoccupied_value = *(float *)(message + 2);
+      if (!own) {
+        received_set_unoccupied_value = false;
+        id_set_unoccupied_value = luminaire;
+      }
+      else {
+        luxRefUnocc = set_unoccupied_value;
+        if (!deskOccupancy)
+          ledConsensus.L_i = luxRefUnocc;
+
+        answer[1] = set_unoccupied_value_ans;
+        Serial.write(answer, 8);
+      }
       break;
 
     case set_cost_ask:
-      received_set_cost = false;
-      id_set_cost = luminaire;
-      set_cost = *(float *)(message+2);
-      //Serial.println("! ack");
+      set_cost = *(float *)(message + 2);
+      if (!own) {
+        received_set_cost = false;
+        id_set_cost = luminaire;
+      }
+      else {
+        ledConsensus.c_i = set_cost;
+        answer[1] = set_unoccupied_value_ans;
+        Serial.write(answer, 8);
+      }
       break;
 
     case set_restart_ask:
       received_set_restart = false;
       id_set_restart = luminaire;
-      set_restart = *(float *)(message+2);
-      //Serial.println("! ack");
+      set_restart = *(float *)(message + 2);
       break;
   }
   first = true;
