@@ -52,4 +52,7 @@ const constexpr char set_unoccupied_value_ans = 41;
 const constexpr char set_cost_ans = 42;
 const constexpr char set_restart_ans = 43;
 
+const constexpr char sample_duty_cyle = 44;
+const constexpr char sample_lux = 45;
+
 #endif //COM_CODES

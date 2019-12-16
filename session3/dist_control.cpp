@@ -35,7 +35,6 @@ float dutyCycle = 0;
 
 /*--------Function definition--------*/
 float getLux(int measurement) {
-
   float Vldr, Rldr, lux;
 
   measurement = map(measurement, 0, 1023, 0, 5000);

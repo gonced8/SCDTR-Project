@@ -33,6 +33,10 @@ constexpr byte ID1 = 8;
 bool saturateInt = false;
 //bool resetAWU = false;
 
+float dutyCycles[maxNodes];
+float luxs[maxNodes];
+char pcMessage[11];
+
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
 void getNodeId();
@@ -72,6 +76,7 @@ void setup() {
 
   timerIntConfig();
 
+  pcMessage[0] = '*'; pcMessage[10] = '\n';
 }
 
 void loop() {
@@ -87,27 +92,42 @@ void loop() {
 
   else {
     ledConsensus.run();
-    // 
+
     if (sampFlag) {
-        /*// Calc pid duty cycle given reference and new measurement
+      /*// Calc pid duty cycle given reference and new measurement
         //if (ledConsensus.finished()) {
         u_pid = pid.calc(ledConsensus.getLocalD() * k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
         // Write new duty cycle
         analogWrite(ledPin, constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         Serial.print("PID wrote "); Serial.println(constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         // See saturation
-        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);*/
+        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
 
-      if (!sendFlag) {
-          /*---------------
-          Communication of hub to PC will go here (?)
-          ---------------*/
+            if (!sendFlag) {
+                // Communication of hub to PC will go here (?)
         sendFlag = true;
-      }
-      /*if (writeFlag) {
+        }
+        if (writeFlag) {
         writeFlag = false;
         sampFlag = false;
-      }*/
+        }*/
+
+      sampFlag = false;
+
+      // Stream duty cycle and lux to pc
+      dutyCycles[nodeId - 1] = ledConsensus.dNodeOverall[nodeId - 1];     // Use the value from the PID instead
+      luxs[nodeId - 1] = getLux(analogRead(ldrPin));
+
+      // Send duty cycle and lux to other nodes
+      write(0, sample_duty_cyle, dutyCycles[nodeId - 1]);
+      write(0, sample_lux, luxs[nodeId - 1]);
+
+      for(byte i=1; i==nNodes; i++){
+        pcMessage[1] = (char) i;
+        memcpy(pcMessage+2, dutyCycles+i, sizeof(float));
+        memcpy(pcMessage+6, luxs+i, sizeof(float));
+        Serial.write(pcMessage, sizeof(pcMessage));
+      }
     }
     //
 
@@ -164,6 +184,14 @@ void handleNewMessages() {
         calibrator.send_answer(senderId, value);
         break;
 
+      case sample_duty_cyle:
+        dutyCycles[senderId - 1] = value;
+        break;
+
+      case sample_lux:
+        luxs[senderId - 1] = value;
+        break;
+
       // Duty cycle
       /*case duty_cycle_ack:
         ledConsensus.receive_ack(senderId);
@@ -182,13 +210,13 @@ void handleNewMessages() {
       default:
         if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
           ledConsensus.ans(senderId, code);
-          
+
         else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
           ledConsensus.rcv(senderId, code, value);
-          
+
         else if (code >= occupancy_ask && code <= set_restart_ask)
           pcComms.ans(senderId, code, value);
-          
+
         else if (code >= occupancy_ans && code <= set_restart_ans)
           pcComms.rcv(senderId, code, value);
 
