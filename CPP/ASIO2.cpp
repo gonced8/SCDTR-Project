@@ -60,13 +60,14 @@ void printList(LinkedList toprint, int argument) {
 }
 
 void open_port(){
-	sp.open("/dev/cu.usbmodem14101", ec);
+		char port_name[] = "/dev/cu.usbmodem14201";
+	sp.open(port_name, ec);
 	while(ec){
 		std::cout << "Could not open serial port" << std::endl;
 		std::cout << "Please connect USB to the correct port" << std::endl;
 		std::cout << "Will try again in 1 seconds" << std::endl;
 		sleep(1);
-		sp.open("/dev/cu.usbmodem14101", ec);
+		sp.open(port_name, ec);
 	}
 	sp.set_option(serial_port_base::baud_rate(115200), ec);
 }
@@ -80,20 +81,19 @@ void read_handler(const error_code &ec, size_t nbytes) {
 	//data is now available at read_buf
 	float datalocal[paramNumber+1]; // All data, first being luminaire number
 	measure measurelocal;
-	std::stringstream mybuffer;
-	char msg;
-	mybuffer.str(std::string()); //Clear buffer
-	mybuffer << &arduinocomms_buff;
-	std::cout << mybuffer.str();
-	msg = mybuffer.str().at(0);
-	//std::cout << "Float " << read_value << std::endl;
-	if(msg == '!'){ // Different message
-		prettyPrint(mybuffer.str());
+
+	char msg[256] = {0};
+	arduinocomms_buff.sgetn(reinterpret_cast<char *>(msg), arduinocomms_buff.size());
+	
+	//std::cout << msg << std::endl;
+
+	if(msg[0] == '!'){ // Different message
+		prettyPrint(msg);
 	}
-	else if(msg == '*'){
-		msg = mybuffer.str().at(1);
-		datalocal[0] = static_cast<float>(msg);
-		memcpy(&datalocal[1], mybuffer.str().c_str()+2, sizeof(float));
+	/*
+	else if(msg[0] == '*'){
+		datalocal[0] = static_cast<float>(msg[1]);
+		datalocal[1] = (msg+2, sizeof(float));
 		memcpy(&datalocal[2], mybuffer.str().c_str()+6, sizeof(float));
 		for(int i=0; i<paramNumber;i++){
 				data[static_cast<int>(datalocal[0])*paramNumber+(i)] = datalocal[i+1];
@@ -101,7 +101,7 @@ void read_handler(const error_code &ec, size_t nbytes) {
 		measurelocal.current_time = time(NULL);
 		measurelocal.measured_illuminance = datalocal[1];
 		measurelocal.duty_cycle = datalocal[2];
-		if(current_occupation[static_cast<int>(datalocal[0])] > 0.95){
+		if(current_occupation[static_cast<int>(datalocal[0])] == 1){
 			measurelocal.current_ref = current_ref_occupied[static_cast<int>(datalocal[0])];
 		}
 		else{
@@ -119,17 +119,19 @@ void read_handler(const error_code &ec, size_t nbytes) {
 		energy[static_cast<int>(datalocal[0])] += (datalocal[1]/100)*(60/perminute);
 
 	}
-	tim.expires_from_now(boost::posix_time::milliseconds(100));
+	*/
+	tim.expires_from_now(boost::posix_time::milliseconds(1));
 	tim.async_wait(timer_handler);
 }
 
-void prettyPrint (std::string s){
-	int messagenum;
+void prettyPrint (char *msg){
+	char messagenum;
 	int luminaire;
 	float multifunfloat;
-	messagenum = (int) s.at(1);
-	luminaire = (int) s.at(2);
-	memcpy(&multifunfloat, s.c_str()+3, sizeof(float));
+	messagenum = msg[1];
+	luminaire = (int) msg[2];
+	multifunfloat = *(float *)(msg+3);
+
 	switch(messagenum){
 		case occupancy_ans:
 			std::cout<<"o " << luminaire << " " << multifunfloat << std::endl;
@@ -156,40 +158,45 @@ void prettyPrint (std::string s){
 			std::cout<<"t " << luminaire << " " << multifunfloat << std::endl;
 			break;
 		case set_occupied_ans:
-			if(multifunfloat > 0.9){
+			if(multifunfloat == 0){
 				std::cout<< "ack" << std::endl;
 			}
 			else{
 				std::cout << "err" << std::endl;
 			}
+			break;
 		case set_occupied_value_ans:
-			if(multifunfloat > 0.9){
+			if(multifunfloat == 0){
 				std::cout<< "ack" << std::endl;
 			}
 			else{
 				std::cout << "err" << std::endl;
 			}
+			break;
 		case set_unoccupied_value_ans:
-			if(multifunfloat > 0.9){
+			if(multifunfloat == 0){
 				std::cout<< "ack" << std::endl;
 			}
 			else{
 				std::cout << "err" << std::endl;
 			}
+			break;
 		case set_cost_ans:
-			if(multifunfloat > 0.9){
+			if(multifunfloat == 0){
 				std::cout<< "ack" << std::endl;
 			}
 			else{
 				std::cout << "err" << std::endl;
 			}
+			break;
 		case set_restart_ans:
-			if(multifunfloat > 0.9){
+			if(multifunfloat == 0){
 				std::cout<< "ack" << std::endl;
 			}
 			else{
 				std::cout << "err" << std::endl;
 			}
+			break;
 	}
 }
 
@@ -202,15 +209,14 @@ void handle_read_input (const error_code & ec, size_t len) {
 	mybuffer.str(std::string()); //Clear buffer
 	mybuffer << &pccomms_buff;
 	std::string s = mybuffer.str();
-	std::cout << "Inside PC\n";
+	//std::cout << "Inside PC\n";
 	choose_case(s);
 	start_read_input();
 }
 
 void choose_case(std::string s) {
-	int luminaire;
+	int luminaire = 0;
 	float multifunfloat;
-	int messagenum;
 	if(s.at(0) == 'g'){
 		try {
 			luminaire = std::stoi(s.substr(4));
@@ -333,7 +339,7 @@ void choose_case(std::string s) {
 	else if(s.at(0) == 'o'){
 		luminaire = std::stoi(s.substr(2));
 		multifunfloat = std::stoi(s.substr(4));
-		if(multifunfloat > 0.95){
+		if(multifunfloat == 1){
 			current_occupation[luminaire] = 1;
 		}
 		else{
@@ -384,13 +390,14 @@ void choose_case(std::string s) {
 }
 
 void send_arduino(int luminaire, int messagenum, float parameter){
-	std::ostringstream os;
-	if(parameter == -1)
-		 os << luminaire << " " << messagenum << std::endl;
-	else
-		os << luminaire << " " << messagenum << " " << parameter << std::endl;
+	char message[6];
 
-	async_write(sp, buffer(os.str()),
+	message[0] = (char) luminaire;
+	message[1] = (char) messagenum;
+
+	memcpy(message+2, &parameter, sizeof(float));
+
+	async_write(sp, buffer(message, 6),
 			[](const error_code &ec, size_t len){;}
 				);
 }

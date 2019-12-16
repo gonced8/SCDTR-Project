@@ -5,6 +5,12 @@
 
 #include <Arduino.h>
 #include "can_comms.h"
+#include "dist_control.h"
+
+extern LedConsensus ledConsensus;
+extern float luxRefUnocc;
+extern float luxRefOcc;
+extern bool deskOccupancy;
 
 class PcComms {
     /*-------Variable declaration-------*/
@@ -61,7 +67,7 @@ class PcComms {
     /*--------Function propotypes--------*/
     void init(byte _nodeId, byte _nNodes);
     void ask();
-    void ans(byte senderId, char code);
+    void ans(byte senderId, char code, float value);
     void rcv(byte senderId, char code, float value);
     void SerialDecode();
 };

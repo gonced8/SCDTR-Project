@@ -80,62 +80,74 @@ void PcComms::ask() {
       write(id_time_since_restart, time_since_restart_ask, 0);
 
     if (!received_set_occupied)
-      write(id_set_occupied, set_occupied_ask, 0);
+      write(id_set_occupied, set_occupied_ask, set_occupied);
 
     if (!received_set_occupied_value)
-      write(id_set_occupied_value, set_occupied_value_ask, 0);
+      write(id_set_occupied_value, set_occupied_value_ask, set_occupied_value);
 
     if (!received_set_unoccupied_value)
-      write(id_set_unoccupied_value, set_unoccupied_value_ask, 0);
+      write(id_set_unoccupied_value, set_unoccupied_value_ask, set_unoccupied_value);
 
     if (!received_set_cost)
-      write(id_set_cost, set_cost_ask, 0);
+      write(id_set_cost, set_cost_ask, set_cost);
 
     if (!received_set_restart)
-      write(id_set_restart, set_restart_ask, 0);
+      write(id_set_restart, set_restart_ask, set_restart);
 
     first = false;
     last_time = current_time;
   }
 }
 
-void PcComms::ans(byte senderId, char code) {
+void PcComms::ans(byte senderId, char code, float value) {
   switch (code) {
     case occupancy_ask:
-      write(senderId, occupancy_ans, 0);
+      write(senderId, occupancy_ans, (float) deskOccupancy);
       break;
     case lower_bound_occupied_ask:
-      write(senderId, lower_bound_occupied_ans, 0);
+      write(senderId, lower_bound_occupied_ans, luxRefOcc);
       break;
     case lower_bound_unoccupied_ask:
-      write(senderId, lower_bound_unoccupied_ans, 0);
+      write(senderId, lower_bound_unoccupied_ans, luxRefUnocc);
       break;
     case current_lower_bound_ask:
-      write(senderId, current_lower_bound_ans, 0);
+      write(senderId, current_lower_bound_ans, ledConsensus.L_i);
       break;
     case current_external_ask:
-      write(senderId, current_external_ans, 0);
+      write(senderId, current_external_ans, ledConsensus.o_i);
       break;
     case current_reference_ask:
-      write(senderId, current_reference_ans, 0);
+      write(senderId, current_reference_ans, ledConsensus.dNodeOverall[nodeId - 1]);
       break;
     case current_cost_ask:
-      write(senderId, current_cost_ans, 0);
+      write(senderId, current_cost_ans, ledConsensus.c_i);
       break;
     case time_since_restart_ask:
-      write(senderId, time_since_restart_ans, 0);
+      write(senderId, time_since_restart_ans, millis() / 1000.0);
       break;
     case set_occupied_ask:
       write(senderId, set_occupied_ans, 0);
+      deskOccupancy = value == 1;
+      if (deskOccupancy)
+        ledConsensus.L_i = luxRefOcc;
+      else
+        ledConsensus.L_i = luxRefUnocc;
       break;
     case set_occupied_value_ask:
       write(senderId, set_occupied_value_ans, 0);
+      luxRefOcc = value;
+      if (deskOccupancy)
+        ledConsensus.L_i = luxRefOcc;
       break;
     case set_unoccupied_value_ask:
       write(senderId, set_unoccupied_value_ans, 0);
+      luxRefUnocc = value;
+      if (!deskOccupancy)
+        ledConsensus.L_i = luxRefUnocc;
       break;
     case set_cost_ask:
       write(senderId, set_cost_ans, 0);
+      ledConsensus.c_i = value;
       break;
     case set_restart_ask:
       write(senderId, set_restart_ans, 0);
@@ -145,7 +157,7 @@ void PcComms::ans(byte senderId, char code) {
 
 void PcComms::rcv(byte senderId, char code, float value) {
   char message[8];
-  
+
   switch (code) {
     case occupancy_ans:
       if (!received_occupancy) {
@@ -198,51 +210,52 @@ void PcComms::rcv(byte senderId, char code, float value) {
     case set_occupied_ans:
       if (!received_set_occupied) {
         received_set_occupied = true;
-        set_occupied = value;
       }
       break;
     case set_occupied_value_ans:
       if (!received_set_occupied_value) {
         received_set_occupied_value = true;
-        set_occupied_value = value;
       }
       break;
     case set_unoccupied_value_ans:
       if (!received_set_unoccupied_value) {
         received_set_unoccupied_value = true;
-        set_unoccupied_value = value;
       }
       break;
     case set_cost_ans:
       if (!received_set_cost) {
         received_set_cost = true;
-        set_cost = value;
       }
       break;
     case set_restart_ans:
       if (!received_set_restart) {
         received_set_restart = true;
-        set_restart = value;
       }
       break;
   }
-  
+
   message[0] = '!';
   message[1] = code;
   message[2] = (char) senderId;
-  memcpy(message+3, &value, sizeof(float));
+  memcpy(message + 3, &value, sizeof(float));
   message[7] = '\n';
   Serial.write(message, 8);
 }
 
 void PcComms::SerialDecode() {
-  String message = Serial.readString();
-  byte luminaire = (byte) message.toInt();
-  byte messagenum = (byte)message.substring(2).toInt();
+  char message[6];
+  Serial.print("Bytes: ");
+  Serial.println(Serial.readBytes(message, 6));
+  byte luminaire = (byte) message[0];       // CORRECT THIS IN ASIO
+  char code = message[1];
 
-  Serial.print(message);
 
-  switch (messagenum) {
+  Serial.print("Luminaire ");
+  Serial.println(luminaire);
+  Serial.print("Code ");
+  Serial.println((byte)code);
+
+  switch (code) {
     case occupancy_ask:
       received_occupancy = false;
       id_occupancy = luminaire;
@@ -294,30 +307,37 @@ void PcComms::SerialDecode() {
     case set_occupied_ask:
       received_set_occupied = false;
       id_set_occupied = luminaire;
+      set_occupied = *(float *)(message+2);
       //Serial.println("! ack");
       break;
 
     case set_occupied_value_ask:
       received_set_occupied_value = false;
       id_set_occupied_value = luminaire;
+      set_occupied_value = *(float *)(message+2);
       //Serial.println("! ack");
       break;
 
     case set_unoccupied_value_ask:
       received_set_unoccupied_value = false;
       id_set_unoccupied_value = luminaire;
+      set_unoccupied_value = *(float *)(message+2);
+      Serial.print("Float ");
+      Serial.println(set_unoccupied_value);
       //Serial.println("! ack");
       break;
 
     case set_cost_ask:
       received_set_cost = false;
       id_set_cost = luminaire;
+      set_cost = *(float *)(message+2);
       //Serial.println("! ack");
       break;
 
     case set_restart_ask:
       received_set_restart = false;
       id_set_restart = luminaire;
+      set_restart = *(float *)(message+2);
       //Serial.println("! ack");
       break;
   }

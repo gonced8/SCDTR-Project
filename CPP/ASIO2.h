@@ -66,7 +66,7 @@ float read_value;
 //void write_handler(const error_code &ec, size_t nbytes);
 void timer_handler(const error_code &ec);
 void read_handler(const error_code &ec, size_t nbytes);
-void prettyPrint (std::string s);
+void prettyPrint (char *msg);
 void start_read_input(const error_code & ec, size_t len);
 void handle_read_input (const error_code & ec, size_t len);
 void choose_case(std::string s);

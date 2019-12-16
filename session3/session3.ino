@@ -88,28 +88,28 @@ void loop() {
   else {
     ledConsensus.run();
     // 
-    /*if (sampFlag) {
-      // Calc pid duty cycle given reference and new measurement
+    if (sampFlag) {
+        /*// Calc pid duty cycle given reference and new measurement
         //if (ledConsensus.finished()) {
         u_pid = pid.calc(ledConsensus.getLocalD() * k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
         // Write new duty cycle
         analogWrite(ledPin, constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         Serial.print("PID wrote "); Serial.println(constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
         // See saturation
-        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
+        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);*/
 
       if (!sendFlag) {
-        /*---------------
+          /*---------------
           Communication of hub to PC will go here (?)
-          ---------------
+          ---------------*/
         sendFlag = true;
       }
-      if (writeFlag) {
+      /*if (writeFlag) {
         writeFlag = false;
         sampFlag = false;
-      }
+      }*/
     }
-    //*/
+    //
 
     if (Serial.available() > 0) {
       Serial.println("Entered available");
@@ -182,10 +182,13 @@ void handleNewMessages() {
       default:
         if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
           ledConsensus.ans(senderId, code);
+          
         else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
           ledConsensus.rcv(senderId, code, value);
+          
         else if (code >= occupancy_ask && code <= set_restart_ask)
-          pcComms.ans(senderId, code);
+          pcComms.ans(senderId, code, value);
+          
         else if (code >= occupancy_ans && code <= set_restart_ans)
           pcComms.rcv(senderId, code, value);
 

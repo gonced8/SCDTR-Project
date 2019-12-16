@@ -44,14 +44,10 @@ class LedConsensus {
     byte nodeId;
     byte nNodes;
     float c[maxNodes];
-    float c_i;
     float dNode[maxNodes];
-    float dNodeOverall[maxNodes];
     float dAvg[maxNodes];
     float rho;
     float y[maxNodes];
-    float o_i = 0;
-    float L_i = 0;
     float f_i = 0;
     float cost;
     bool firstPart;
@@ -64,11 +60,17 @@ class LedConsensus {
     byte nHand;
     float tol = 0.01;
     float maxActuation;
-
     byte state;
     float dColumn[maxNodes];
     bool boolArray[maxNodes];
     byte nBool;
+
+  public:
+    float c_i;
+    float dNodeOverall[maxNodes];
+    float o_i = 0;
+    float L_i = 0;
+
 
   private:
     void ziCalc(float* zi);
@@ -103,7 +105,7 @@ class LedConsensus {
     void setMaxActuation(float calibration_input);
 
     bool finished();
-    
+
     void run();
 
     void ask();

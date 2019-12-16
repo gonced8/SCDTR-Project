@@ -22,8 +22,8 @@ float b[3] = {1.763, 1.763, 1.763}; // LDR calibration
 float k[3] = {0.0, 0.0, 0.0}; // Gains
 
 // Control related variables
-float luxRefUnocc = 50;
-float luxRefOcc = 40;
+float luxRefUnocc = 30;
+float luxRefOcc = 70;
 bool deskOccupancy = false;
 
 // Optimization
@@ -362,16 +362,16 @@ void LedConsensus::run() {
     // Measure lux
     case 0:
       measuredLux = getLux(analogRead(ldrPin));
-      Serial.print("Measured lux is "); Serial.println(measuredLux);
+      //Serial.print("Measured lux is "); Serial.println(measuredLux);
       aux = measuredLux - calcExpectedLux();
-      Serial.print("New o is "); Serial.println(aux);
+      //Serial.print("New o is "); Serial.println(aux);
       setLocalO(aux);
       startCounter();
       checkConsensusError();
 
-      for (byte i = 1; i <= nNodes; i++) {
+      /*for (byte i = 1; i <= nNodes; i++) {
         Serial.print("Led "); Serial.print(i); Serial.print(" "); Serial.println(dNodeOverall[i - 1]);
-      }
+      }*/
       state++;
       break;
 
@@ -434,7 +434,7 @@ void LedConsensus::run() {
     // Update led duty cycle
     case 6:
       dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
-      Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
+      //Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
       analogWrite(ledPin, (int) (dNodeOverall[nodeId - 1]*2.55 + 0.5)); 
       state++;
       break;
