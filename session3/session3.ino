@@ -41,7 +41,7 @@ float lux_ref;
 float aux;
 extern bool saturateInt;
 float u_pid = 0;
-byte u;
+float u;
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -119,20 +119,19 @@ void loop() {
         //Serial.print("Lux of "); Serial.print(i+1); Serial.print(" = "); Serial.println(luxs[i]);
       }
 
-      lux_ref = dutyCycles[nodeId-1] * k[nodeId - 1];
+      lux_ref = dutyCycles[nodeId - 1] * k[nodeId - 1];
       aux = 0;
       for (byte i = 0; i < nNodes; i++) {
         if (i != nodeId - 1)
           aux += dutyCycles[i] * k[i];
       }
-      u_pid = pid.calc(lux_ref, getLux(analogRead(ldrPin)) - aux, saturateInt);
-      //Serial.print("PID u"); Serial.println(u_pid); 
-      u = constrain((int)((ledConsensus.dNodeOverall[nodeId - 1]+u_pid) * 2.55 + 0.5), 0, 255);
+      u_pid = pid.calc(lux_ref, luxs[nodeId - 1] - aux, saturateInt);
+      //Serial.print("PID u"); Serial.println(u_pid);
+      u = ledConsensus.dNodeOverall[nodeId - 1] + u_pid;
       saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
-      analogWrite(ledPin, u); 
+      dutyCycles[nodeId - 1] = u;
+      analogWrite(ledPin, constrain((int)(u*2.55+0.5), 0, 255));
       //Serial.print("u PID = "); Serial.println(u_pid);
-
-      dutyCycles[nodeId - 1] = u; // IMPROVE BECAUSE FLOAT
     }
     //
 
