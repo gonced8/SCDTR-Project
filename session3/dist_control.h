@@ -20,7 +20,7 @@ constexpr byte ldrPin = A0;
 constexpr int Vcc = 5000;  // [mV]
 constexpr byte R1 = 10;     // [KOhm]
 
-constexpr byte maxIters = 10;
+constexpr byte maxIters = 20;
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];

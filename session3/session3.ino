@@ -37,6 +37,12 @@ float dutyCycles[maxNodes];
 float luxs[maxNodes];
 char pcMessage[11];
 
+float lux_ref;
+float aux;
+extern bool saturateInt;
+float u_pid = 0;
+byte u;
+
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
 void getNodeId();
@@ -94,40 +100,39 @@ void loop() {
     ledConsensus.run();
 
     if (sampFlag) {
-      /*// Calc pid duty cycle given reference and new measurement
-        //if (ledConsensus.finished()) {
-        u_pid = pid.calc(ledConsensus.getLocalD() * k[nodeId - 1], getLux(analogRead(ldrPin)), saturateInt);
-        // Write new duty cycle
-        analogWrite(ledPin, constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
-        Serial.print("PID wrote "); Serial.println(constrain((int) (u_pid * 2.55 + 0.5), 0, 255));
-        // See saturation
-        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
-
-            if (!sendFlag) {
-                // Communication of hub to PC will go here (?)
-        sendFlag = true;
-        }
-        if (writeFlag) {
-        writeFlag = false;
-        sampFlag = false;
-        }*/
-
       sampFlag = false;
 
       // Stream duty cycle and lux to pc
-      dutyCycles[nodeId - 1] = ledConsensus.dNodeOverall[nodeId - 1];     // Use the value from the PID instead
+      //dutyCycles[nodeId - 1] = ledConsensus.dNodeOverall[nodeId - 1];     // THIS WORKS BETTER THAN THE VALUE FROM THE PID
       luxs[nodeId - 1] = getLux(analogRead(ldrPin));
 
       // Send duty cycle and lux to other nodes
       write(0, sample_duty_cyle, dutyCycles[nodeId - 1]);
       write(0, sample_lux, luxs[nodeId - 1]);
 
-      for(byte i=1; i==nNodes; i++){
+      for (byte i = 0; i < nNodes; i++) {
         pcMessage[1] = (char) i;
-        memcpy(pcMessage+2, dutyCycles+i, sizeof(float));
-        memcpy(pcMessage+6, luxs+i, sizeof(float));
+        memcpy(pcMessage + 2, dutyCycles + i, sizeof(float));
+        memcpy(pcMessage + 6, luxs + i, sizeof(float));
         Serial.write(pcMessage, sizeof(pcMessage));
+        //Serial.print("Duty cycle of "); Serial.print(i+1); Serial.print(" = "); Serial.println(dutyCycles[i]);
+        //Serial.print("Lux of "); Serial.print(i+1); Serial.print(" = "); Serial.println(luxs[i]);
       }
+
+      lux_ref = dutyCycles[nodeId-1] * k[nodeId - 1];
+      aux = 0;
+      for (byte i = 0; i < nNodes; i++) {
+        if (i != nodeId - 1)
+          aux += dutyCycles[i] * k[i];
+      }
+      u_pid = pid.calc(lux_ref, getLux(analogRead(ldrPin)) - aux, saturateInt);
+      //Serial.print("PID u"); Serial.println(u_pid); 
+      u = constrain((int)((ledConsensus.dNodeOverall[nodeId - 1]+u_pid) * 2.55 + 0.5), 0, 255);
+      saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
+      analogWrite(ledPin, u); 
+      //Serial.print("u PID = "); Serial.println(u_pid);
+
+      dutyCycles[nodeId - 1] = u; // IMPROVE BECAUSE FLOAT
     }
     //
 

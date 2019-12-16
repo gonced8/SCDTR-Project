@@ -60,7 +60,7 @@ void printList(LinkedList toprint, int argument) {
 }
 
 void open_port(){
-		char port_name[] = "/dev/cu.usbmodem14201";
+		char port_name[] = "/dev/cu.usbmodem143101";
 	sp.open(port_name, ec);
 	while(ec){
 		std::cout << "Could not open serial port" << std::endl;
@@ -84,42 +84,43 @@ void read_handler(const error_code &ec, size_t nbytes) {
 
 	char msg[256] = {0};
 	arduinocomms_buff.sgetn(reinterpret_cast<char *>(msg), arduinocomms_buff.size());
-	
+
 	//std::cout << msg << std::endl;
 
 	if(msg[0] == '!'){ // Different message
 		prettyPrint(msg);
 	}
-	/*
+
 	else if(msg[0] == '*'){
-		datalocal[0] = static_cast<float>(msg[1]);
-		datalocal[1] = (msg+2, sizeof(float));
-		memcpy(&datalocal[2], mybuffer.str().c_str()+6, sizeof(float));
+		datalocal[0] = static_cast<float> (msg[1]);
+		datalocal[1] = *(float *) (msg+2);
+		datalocal[2] = *(float *) (msg+6);
 		for(int i=0; i<paramNumber;i++){
-				data[static_cast<int>(datalocal[0])*paramNumber+(i)] = datalocal[i+1];
+				data[(static_cast<int>(datalocal[0]) - 1)*paramNumber + i] = datalocal[i+1];
 		}
 		measurelocal.current_time = time(NULL);
 		measurelocal.measured_illuminance = datalocal[1];
 		measurelocal.duty_cycle = datalocal[2];
-		if(current_occupation[static_cast<int>(datalocal[0])] == 1){
-			measurelocal.current_ref = current_ref_occupied[static_cast<int>(datalocal[0])];
+		if(current_occupation[static_cast<int>(datalocal[0]) - 1] == 1){
+			measurelocal.current_ref = current_ref_occupied[static_cast<int>(datalocal[0]) - 1];
 		}
 		else{
-			measurelocal.current_ref = current_ref_unoccupied[static_cast<int>(datalocal[0])];
+			measurelocal.current_ref = current_ref_unoccupied[static_cast<int>(datalocal[0]) - 1];
 		}
-		if(realtime[static_cast<int>(datalocal[0])*2+0]){
+
+		if(realtime[static_cast<int>(datalocal[0] - 1)*2+0]){
 			std::cout << "s l " << static_cast<int>(datalocal[0]) << " " << datalocal[1] << " " << ctime(& measurelocal.current_time);
 		}
-		if(realtime[static_cast<int>(datalocal[0])*2+1]){
+		if(realtime[static_cast<int>(datalocal[0] - 1)*2+1]){
 			std::cout << "s d " << static_cast<int>(datalocal[0]) << " " << datalocal[2] << " " << ctime(& measurelocal.current_time);
 		}
-		bufferqueue[static_cast<int>(datalocal[0])].push(measurelocal);
-		if(bufferqueue[static_cast<int>(datalocal[0])].size() > perminute) // More than one minute
-			bufferqueue[static_cast<int>(datalocal[0])].pop();
-		energy[static_cast<int>(datalocal[0])] += (datalocal[1]/100)*(60/perminute);
 
+		bufferqueue[static_cast<int>(datalocal[0]) - 1].push(measurelocal);
+		if(bufferqueue[static_cast<int>(datalocal[0]) - 1].size() > perminute) // More than one minute
+			bufferqueue[static_cast<int>(datalocal[0]) - 1].pop();
+		energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[1]/100)*(60/perminute);
 	}
-	*/
+
 	tim.expires_from_now(boost::posix_time::milliseconds(1));
 	tim.async_wait(timer_handler);
 }

@@ -7,7 +7,7 @@
 #include "PID.h"
 extern volatile boolean sampFlag;
 extern bool writeFlag;
-float u_pid;
+//float u_pid;
 float u_pid_tot;
 extern PID pid;
 extern bool saturateInt;
@@ -361,7 +361,7 @@ void LedConsensus::run() {
     // Measure lux
     case 0:
       measuredLux = getLux(analogRead(ldrPin));
-      //Serial.print("Measured lux is "); Serial.println(measuredLux);
+      Serial.print("Measured lux is "); Serial.println(measuredLux);
       aux = measuredLux - calcExpectedLux();
       //Serial.print("New o is "); Serial.println(aux);
       setLocalO(aux);
@@ -434,7 +434,7 @@ void LedConsensus::run() {
     case 6:
       dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
       //Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
-      analogWrite(ledPin, (int) (dNodeOverall[nodeId - 1]*2.55 + 0.5)); 
+      //analogWrite(ledPin, (int) (dNodeOverall[nodeId - 1]*2.55 + 0.5)); 
       state++;
       break;
 
