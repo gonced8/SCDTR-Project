@@ -70,7 +70,7 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 1, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 10, y_init);
   pid.init(0.5, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
   pcComms.init(nodeId, nNodes);
 
