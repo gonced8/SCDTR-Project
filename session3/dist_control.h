@@ -7,20 +7,23 @@
 
 // System imports
 #include <Arduino.h>
+#include <math.h>
 
 // Custom imports
 #include "can_comms.h"
+#include "PID.h"
 
 /*-------Constants declaration-------*/
 // Input/Output pins
-constexpr byte ledPin = 3;
-constexpr byte ldrPin = A0;
+#define ledPin 3
+#define ldrPin A0
 
 // Circuit parameters
-constexpr int Vcc = 5000;  // [mV]
-constexpr byte R1 = 10;     // [KOhm]
+#define Vcc 5000      // [mV]
+#define R1 10         // [KOhm]
 
-constexpr byte maxIters = 20;
+#define maxIters 20
+#define threshold 10
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -37,7 +40,6 @@ extern const float infinity;
 
 // Actuation
 extern float measuredLux;
-extern float dutyCycle;
 
 /*---------Type definition----------*/
 class LedConsensus {
@@ -48,18 +50,13 @@ class LedConsensus {
     float dAvg[maxNodes];
     float rho;
     float y[maxNodes];
-    float f_i = 0;
-    float cost;
-    bool firstPart;
     unsigned long last_time;
-    const unsigned int timeout = 250;
+    const unsigned int timeout = 20;
     byte remainingIters;
-    bool waiting;
     bool first;
     bool handshakes[maxNodes];
     byte nHand;
     float tol = 0.01;
-    float maxActuation;
     byte state;
     float dColumn[maxNodes];
     bool boolArray[maxNodes];
@@ -83,7 +80,8 @@ class LedConsensus {
     void resetBool();
 
   public:
-    void init(byte nodeId, byte nNodes, float rho, byte c_i, float* new_y);
+    void init(byte nodeId, byte nNodes, float rho, byte c_i);
+    bool detectChanges();
     void setLocalC(float c_i);
     float getLocalC();
     void setLocalO(float o_i);
@@ -95,16 +93,12 @@ class LedConsensus {
     float getMeasuredLux();
     void calcNewO();
     float calcExpectedLux();
-    void startCounter();
     void tellOthers();
     void tellStart();
     void rcvAns(byte senderId);
     void rcvStart(byte senderId);
     void calcOverallDC();
-    void checkConsensusError();
-    void setMaxActuation(float calibration_input);
-
-    bool finished();
+    void resetConsensus();
 
     void run();
 
@@ -115,7 +109,6 @@ class LedConsensus {
 
 /*--------Function propotypes--------*/
 float getLux(int measurement);
-void calcDisturbance(LedConsensus &ledConsensus, float measured);
 
 
 #endif // DIST_CONTROL_H

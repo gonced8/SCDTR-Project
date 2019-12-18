@@ -13,12 +13,12 @@
 #include "comm_codes.h"
 
 /*-------Constants declaration-------*/
-constexpr byte data_bytes = 4;
-constexpr uint32_t mask = 0b11;       // To check the ID
-constexpr uint32_t code_mask = 0b1111111;  // To mask the code
-constexpr byte shiftCode = 4;
-constexpr byte shiftToId = 2;
-constexpr byte shiftFromId = 0;
+#define data_bytes 4
+#define mask 0b11               // To check the ID
+#define code_mask 0b1111111     // To mask the code
+#define shiftCode 4
+#define shiftToId 2
+#define shiftFromId 0
 
 /*-------Variable declaration-------*/
 // CAN Bus

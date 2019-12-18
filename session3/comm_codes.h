@@ -14,9 +14,8 @@ const constexpr char sync_ans = 7;
 const constexpr char ctrl_send = 8;
 const constexpr char ctrl_recv = 9;
 
-const constexpr char consensus_tell = 10;
-const constexpr char consensus_rcv = 11;
-
+const constexpr char start_ask = 10;
+const constexpr char start_ans = 11;
 const constexpr char duty_cycle_ask = 12;
 const constexpr char duty_cycle_ans = 13;
 const constexpr char mean_ask = 14;

@@ -18,10 +18,10 @@ void PID::init(float p, float i, float d, float _T, float _a) {
     k3 = kd / den;
     k4 = kp * kd * a / den;
   }
+  on = true;
 }
 
 float PID::calc(float ref, float y, bool saturate) {
-
   float e = ref - y;
 
   // Error deadzone

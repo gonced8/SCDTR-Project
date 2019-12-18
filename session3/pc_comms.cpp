@@ -234,35 +234,51 @@ void PcComms::rcv(byte senderId, char code, float value) {
       break;
   }
 
-  message[0] = '!';
-  message[1] = code;
-  message[2] = (char) senderId;
-  memcpy(message + 3, &value, sizeof(float));
-  message[7] = '\n';
-  Serial.write(message, 8);
+  Serial.print('?'); Serial.print(senderId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
+}
+
+char read_char(byte timeout) {
+  // Read a single char with a timeout in milliseconds
+  for (byte i = 0; !Serial.available() && i < timeout; i++) {
+    delay(1);
+  }
+  return Serial.read();
 }
 
 void PcComms::SerialDecode() {
-  char message[6];
-  Serial.print("Bytes: ");
-  Serial.println(Serial.readBytes(message, 6));
-  byte luminaire = (byte) message[0];       // CORRECT THIS IN ASIO
-  char code = message[1];
+  // Read Serial
+  char message[128];
+  byte i;
+  char ch = ' ';
 
-  bool own = luminaire == nodeId;
-  char answer[8];
-  float value_aux = 0.0;
-  if (own) {
-    answer[0] = '!';
-    answer[2] = (char) nodeId;
-    answer[7] = '\n';
-    memcpy(answer + 3, &value_aux, sizeof(float));
+  for (i = 0; i < sizeof(message); i++) {
+    ch = read_char(1000);
+    if (ch == -1)
+      return;
+    if (ch == '\n')
+      break;
+    message[i] = ch;
   }
 
+  message[i] = '\0';
+
+  // Parse string
+  byte luminaire;
+  char code;
+  float value;
+
+  sscanf(message, "%c %c %f", &luminaire, &code, &value);
+
+  // Check if message is for hub
+  bool own = luminaire == nodeId;
+
+  // Debug
   Serial.print("Luminaire ");
   Serial.println(luminaire);
   Serial.print("Code ");
   Serial.println((byte)code);
+  Serial.print("Value ");
+  Serial.println(value);
 
   switch (code) {
     case occupancy_ask:
@@ -271,10 +287,8 @@ void PcComms::SerialDecode() {
         id_occupancy = luminaire;
       }
       else {
-        answer[1] = occupancy_ans;
-        value_aux = (float) deskOccupancy;
-        memcpy(answer + 3, &value_aux, sizeof(float));
-        Serial.write(answer, 8);
+        code = occupancy_ans;
+        value = (float) deskOccupancy;
       }
       break;
 
@@ -284,9 +298,8 @@ void PcComms::SerialDecode() {
         id_lower_bound_occupied = luminaire;
       }
       else {
-        answer[1] = lower_bound_occupied_ans;
-        memcpy(answer + 3, &luxRefOcc, sizeof(float));
-        Serial.write(answer, 8);
+        code = lower_bound_occupied_ans;
+        value = luxRefOcc;
       }
       break;
 
@@ -296,9 +309,8 @@ void PcComms::SerialDecode() {
         id_lower_bound_unoccupied = luminaire;
       }
       else {
-        answer[1] = lower_bound_unoccupied_ans;
-        memcpy(answer + 3, &luxRefUnocc, sizeof(float));
-        Serial.write(answer, 8);
+        code = lower_bound_unoccupied_ans;
+        value = luxRefUnocc;
       }
       break;
 
@@ -308,9 +320,8 @@ void PcComms::SerialDecode() {
         id_current_lower_bound = luminaire;
       }
       else {
-        answer[1] = current_lower_bound_ans;
-        memcpy(answer + 3, &ledConsensus.L_i, sizeof(float));
-        Serial.write(answer, 8);
+        code = current_lower_bound_ans;
+        value = ledConsensus.L_i;
       }
       break;
 
@@ -320,9 +331,8 @@ void PcComms::SerialDecode() {
         id_current_external = luminaire;
       }
       else {
-        answer[1] = current_external_ans;
-        memcpy(answer + 3, &ledConsensus.o_i, sizeof(float));
-        Serial.write(answer, 8);
+        code = current_external_ans;
+        value = ledConsensus.o_i;
       }
       break;
 
@@ -332,10 +342,8 @@ void PcComms::SerialDecode() {
         id_current_reference = luminaire;
       }
       else {
-        answer[1] = current_reference_ans;
-        value_aux = millis() / 1000.0;
-        memcpy(answer + 3, &value_aux, sizeof(float));
-        Serial.write(answer, 8);
+        code = current_reference_ans;
+        value = millis() / 1000.0;
       }
       break;
 
@@ -345,9 +353,8 @@ void PcComms::SerialDecode() {
         id_current_cost = luminaire;
       }
       else {
-        answer[1] = current_cost_ans;
-        memcpy(answer + 3, &ledConsensus.c_i, sizeof(float));
-        Serial.write(answer, 8);
+        code = current_cost_ans;
+        value = ledConsensus.c_i;
       }
       break;
 
@@ -357,80 +364,89 @@ void PcComms::SerialDecode() {
         id_time_since_restart = luminaire;
       }
       else {
-        answer[1] = time_since_restart_ans;
-        memcpy(answer + 3, &ledConsensus.dNodeOverall[nodeId - 1], sizeof(float));
-        Serial.write(answer, 8);
+        code = time_since_restart_ans;
+        value = ledConsensus.dNodeOverall[nodeId - 1];
       }
       break;
 
     case set_occupied_ask:
-      set_occupied = *(float *)(message + 2);
       if (!own) {
+        set_occupied = value;
         received_set_occupied = false;
         id_set_occupied = luminaire;
       }
       else {
-        deskOccupancy = set_occupied == 1;
+        deskOccupancy = value == 1;
         if (deskOccupancy)
           ledConsensus.L_i = luxRefOcc;
         else
           ledConsensus.L_i = luxRefUnocc;
 
-        answer[1] = set_occupied_ans;
-        Serial.write(answer, 8);
+        code = set_occupied_ans;
+        value = 0;
       }
       break;
 
     case set_occupied_value_ask:
-      set_occupied_value = *(float *)(message + 2);
       if (!own) {
+        set_occupied_value = value;
         received_set_occupied_value = false;
         id_set_occupied_value = luminaire;
       }
       else {
-        luxRefOcc = set_occupied_value;
+        luxRefOcc = value;
         if (deskOccupancy)
           ledConsensus.L_i = luxRefOcc;
 
-        answer[1] = set_occupied_value_ans;
-        Serial.write(answer, 8);
+        code = set_occupied_value_ans;
+        value = 0;
       }
       break;
 
     case set_unoccupied_value_ask:
-      set_unoccupied_value = *(float *)(message + 2);
       if (!own) {
+        set_unoccupied_value = value;
         received_set_unoccupied_value = false;
         id_set_unoccupied_value = luminaire;
       }
       else {
-        luxRefUnocc = set_unoccupied_value;
+        luxRefUnocc = value;
         if (!deskOccupancy)
           ledConsensus.L_i = luxRefUnocc;
 
-        answer[1] = set_unoccupied_value_ans;
-        Serial.write(answer, 8);
+        code = set_unoccupied_value_ans;
+        value = 0;
       }
       break;
 
     case set_cost_ask:
-      set_cost = *(float *)(message + 2);
       if (!own) {
+        set_cost = value;
         received_set_cost = false;
         id_set_cost = luminaire;
       }
       else {
-        ledConsensus.c_i = set_cost;
-        answer[1] = set_unoccupied_value_ans;
-        Serial.write(answer, 8);
+        ledConsensus.c_i = value;
+        code = set_unoccupied_value_ans;
+        value = 0;
       }
       break;
 
     case set_restart_ask:
-      received_set_restart = false;
-      id_set_restart = luminaire;
-      set_restart = *(float *)(message + 2);
+      if (!own) {
+        received_set_restart = false;
+        id_set_restart = luminaire;
+        set_restart = value;
+      }
+      else {
+        code = set_restart_ans;
+        value = 0;
+      }
       break;
   }
-  first = true;
+
+  if (!own)
+    first = true;
+  else
+    Serial.print('?'); Serial.print(nodeId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
 }

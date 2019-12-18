@@ -99,7 +99,6 @@ void Calibration::run(LedConsensus &ledConsensus) {
           float aux = 0;
           for (byte i = 0; i < nNodes; i++)
             aux += 100 * k[i];
-          ledConsensus.setMaxActuation(aux);
           Serial.print("Max actuation is "); Serial.println(aux);
           //
 

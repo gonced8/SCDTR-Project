@@ -1,19 +1,6 @@
 // Implementation of distributed control related functions
 
-#include <Arduino.h>
-#include <math.h>
 #include "dist_control.h"
-
-#include "PID.h"
-extern volatile boolean sampFlag;
-extern bool writeFlag;
-//float u_pid;
-float u_pid_tot;
-extern PID pid;
-extern bool saturateInt;
-float lux_others;
-
-bool first_pid = true;
 
 /*-------Variable definition--------*/
 // LDR calibration
@@ -31,7 +18,10 @@ const float infinity = 1.0 / 0.0;
 
 // Actuation
 float measuredLux = 0;
-float dutyCycle = 0;
+
+extern float u_pid;
+extern float u;
+extern PID pid;
 
 /*--------Function definition--------*/
 float getLux(int measurement) {
@@ -45,75 +35,15 @@ float getLux(int measurement) {
   return lux;
 }
 
-void calcDisturbance(LedConsensus &ledConsensus, float measured) {
-  float new_o = measured - ledConsensus.calcExpectedLux();
-  Serial.print("New o is "); Serial.println(new_o);
-  ledConsensus.setLocalO(new_o);
-  ledConsensus.startCounter();
-  /*
-    if (abs(new_o - ledConsensus.getLocalO()) > 2) {
-    ledConsensus.setLocalO(new_o);
-    ledConsensus.startCounter();
-    ledConsensus.tellOthers();
-    Serial.println("Will enter consensus again");
-    }
-  */
-}
-
-void LedConsensus::tellOthers() {
-  waiting = true;
-}
-
-void LedConsensus::tellStart() {
-  unsigned long curr_time = millis();
-
-  if (first || (curr_time - last_time >= timeout)) {
-    first = false;
-    write(0, consensus_tell, 0);
-    last_time = curr_time;
-  }
-  Serial.print("Consensus: Told all nodes");
-}
-
-void LedConsensus::rcvAns(byte senderId) {
-  if (!handshakes[senderId - 1]) {
-    nHand++;
-    handshakes[senderId - 1] = true;
-    Serial.print("Handshaked with node "); Serial.println(senderId);
-  }
-
-  // Check if sync with all
-  if (nHand >= nNodes - 1) {
-    // Reset setup
-    for (byte i = 0; i < nNodes; i++)
-      handshakes[i] = false;
-    nHand = 0;
-    first = true;
-    // Stop waiting
-    waiting = false;
-    Serial.println("Consensus telling complete.");
-  }
-}
-
-/*
-  void LedConsensus::rcvStart(byte senderId) {
-  write(senderId, consensus_rcv, 0);
-  if (finished())
-    startCounter();
-  Serial.print("Consensus: Answered node "); Serial.println(senderId);
-  }
-*/
-
-void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float* new_y) {
+void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
   nodeId = _nodeId;
   nNodes = _nNodes;
   // Consensus setup
   rho = _rho;
   c_i = _c_i;
-  memcpy(y, new_y, nNodes * sizeof(float));
-  startCounter();
-  firstPart = true;
+  remainingIters = maxIters;
   for (int i = 0; i < nNodes; i++) {
+    y[i] = 0;
     c[i] = 0;
     dNode[i] = 0;
     dNodeOverall[i] = 0;
@@ -127,11 +57,14 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i, float
   else
     setLocalL(luxRefUnocc);
   // Comms setup
-  waiting = false;
   last_time = millis();
 
-  state = 0;
+  state = 3;
   first = true;
+}
+
+bool LedConsensus::detectChanges() {
+  return (abs(u_pid) > threshold);
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -197,10 +130,6 @@ void LedConsensus::calcNewO() {
   float new_o = getLux(analogRead(ldrPin)) - calcExpectedLux();
   Serial.print("New o inside consensus is "); Serial.println(new_o);
   o_i = new_o;
-}
-
-void LedConsensus::startCounter() {
-  remainingIters = maxIters;
 }
 
 float LedConsensus::evaluateCost(float* local_d) {
@@ -314,7 +243,6 @@ bool LedConsensus::findMinima() {
   if (cost_best != infinity) {
     memcpy(dNode, d_best, nNodes * sizeof(float));
     dColumn[nodeId - 1] = d_best[nodeId - 1];
-    cost = cost_best;
   }
 }
 
@@ -335,149 +263,126 @@ void LedConsensus::calcLagrangeMult() {
   }
 }
 
-void LedConsensus::checkConsensusError() {
-  if (maxActuation + o_i > L_i && (dAvg[nodeId - 1] >= 100 || dNodeOverall[nodeId - 1] >= 100)) {
-    dAvg[nodeId - 1] = 0;
-    y[nodeId - 1] = 0;
-    Serial.print("Have reset dAvg[nodeId - 1] to "); Serial.println(dAvg[nodeId - 1]);
+void LedConsensus::resetConsensus() {
+  for (int i = 0; i < nNodes; i++) {
+    y[i] = 0;
+    dAvg[i] = 0;
   }
-}
-
-void LedConsensus::setMaxActuation(float calibration_input) {
-  maxActuation = calibration_input;
+  remainingIters = maxIters;
 }
 
 void LedConsensus::run() {
-  /*if (waiting) {
-    tellStart();
-    }
-    else {*/
-  //Serial.println(state);
-
-  float aux;
-
   //Serial.println(state);
   switch (state) {
-    // Measure lux
+    // See if need to start new consensus
     case 0:
+      if (detectChanges())
+        state++;
+      break;
+
+    // Tell others to start
+    case 1:
+      ask();
+      break;
+
+    // Receive d real
+    case 2:
+      pid.on = false;
+      ask();
+      break;
+
+    // Measure lux
+    case 3:
+      dNodeOverall[nodeId - 1] = u;
       measuredLux = getLux(analogRead(ldrPin));
       Serial.print("Measured lux is "); Serial.println(measuredLux);
-      aux = measuredLux - calcExpectedLux();
       //Serial.print("New o is "); Serial.println(aux);
-      setLocalO(aux);
-      startCounter();
-      checkConsensusError();
-
+      setLocalO(measuredLux - calcExpectedLux());
+      resetConsensus();
+      
       /*for (byte i = 1; i <= nNodes; i++) {
         Serial.print("Led "); Serial.print(i); Serial.print(" "); Serial.println(dNodeOverall[i - 1]);
-      }*/
+        }*/
       state++;
       break;
 
     // Find minima
-    case 1:
+    case 4:
       findMinima();
       state++;
       break;
 
     // Receive duty cycles
-    case 2:
+    case 5:
       ask();
-      /*// -------
-      if (sampFlag && !writeFlag && first_pid) {
-        float lux_ref = getLocalD() * k[nodeId - 1]; 
-        aux = 0;
-        for(byte i = 0; i<nNodes; i++){
-          if (i != nodeId - 1)
-            aux += dNodeOverall[i]*k[i];
-        }
-        u_pid = pid.calc(lux_ref, getLux(analogRead(ldrPin)) - aux, saturateInt);
-        //Serial.print("PID u"); Serial.println(u_pid);
-        u_pid = constrain((int)((u_pid + getLocalD())*2.55 + 0.5), 0, 255);
-        saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
-        first_pid = false;
-      }
-      //-------*/
       break;
 
     // Compute average
-    case 3:
-      /*//-------
-      if (sampFlag && !writeFlag && !first_pid) { // flags are correct in both ifs!
-        analogWrite(ledPin, u_pid);
-        //Serial.println("PID wrote");
-        first_pid = true;
-        writeFlag = true;
-      }
-      //-------*/
+    case 6:
       calcMeanVector();
+      pid.on = true;
       state++;
       break;
 
     // Receive means
-    case 4:
+    case 7:
       ask();
       break;
 
     // Calculate y
-    case 5:
+    case 8:
       calcLagrangeMult();
       remainingIters--;
       //Serial.print("Remaining iterations: "); Serial.println(remainingIters);
       if (remainingIters > 0)
-        state = 1;
-      else
+        state = 4;
+      else {
+        dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
+        pid.ip = 0;
         state++;
-      break;
-
-    // Update led duty cycle
-    case 6:
-      dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
-      //Serial.print("led ref="); Serial.println(dNodeOverall[nodeId - 1]);
-      //analogWrite(ledPin, (int) (dNodeOverall[nodeId - 1]*2.55 + 0.5)); 
-      state++;
-      break;
-
-    // Receive d real
-    case 7:
-      ask();
+      }
       break;
   }
 }
 void LedConsensus::ask() {
   unsigned long current_time = millis();
 
-  if (state == 2) {
+  if (state == 5) {
     if (first || current_time - last_time >= timeout) {
       for (byte i = 1; i <= nNodes; i++) {
-        if (i != nodeId) {
+        if (i != nodeId && !boolArray[i - 1]) {
           write(i, duty_cycle_ask, dNode[i - 1]);
         }
       }
       last_time = current_time;
+      first = false;
     }
   }
   else {
     char code;
     float value;
     switch (state) {
-      case 4:
-        code = mean_ask;
-        value = dAvg[nodeId - 1];
+      case 1:
+        code = start_ask;
+        break;
+      case 2:
+        code = real_ask;
+        value = u;  // REVISE
         break;
       case 7:
-        code = real_ask;
-        value = dNodeOverall[nodeId - 1];
+        code = mean_ask;
+        value = dAvg[nodeId - 1];
         break;
     }
 
     if (first) {
       write(0, code, value);
       last_time = current_time;
+      first = false;
     }
     else if (current_time - last_time >= timeout) {
       for (byte i = 1; i <= nNodes; i++) {
-        if (i != nodeId) {
+        if (i != nodeId && !boolArray[i - 1]) {
           write(i, code, value);
         }
       }
@@ -492,25 +397,33 @@ void LedConsensus::ans(byte senderId, char code) {
   float value;
 
   switch (code) {
+    case start_ask:
+      valid = (state <= 2);
+      ans_code = start_ans;
+      break;
+    case real_ask:
+      valid = (state >= 2 && state <= 5);
+      ans_code = real_ans;
+      value = dNodeOverall[nodeId - 1];
+      break;
     case duty_cycle_ask:
-      valid = (state >= 2 && state <= 4);
+      valid = (state >= 5 && state <= 7);
       ans_code = duty_cycle_ans;
       value = dNode[senderId - 1];
       break;
     case mean_ask:
-      valid = ((state >= 4 && state <= 7) || state <= 2);
+      valid = (state >= 7 || state <= 2);
       ans_code = mean_ans;
       value = dAvg[nodeId - 1];
-      break;
-    case real_ask:
-      valid = (state >= 7 || state <= 2);
-      ans_code = real_ans;
-      value = dNodeOverall[nodeId - 1];
       break;
   }
 
   if (valid) {
     write(senderId, ans_code, value);
+    if (code == start_ask && state == 0) {
+      state = 2;
+      return;
+    }
     rcv(senderId, ans_code, value);
   }
 }
@@ -521,27 +434,31 @@ void LedConsensus::rcv(byte senderId, char code, float value) {
     float *variable;
 
     switch (code) {
-      case duty_cycle_ans:
+      case start_ans:
+        valid = (state == 1);
+        break;
+      case real_ans:
         valid = (state == 2);
+        variable = &(dNodeOverall[senderId - 1]);
+        break;
+      case duty_cycle_ans:
+        valid = (state == 5);
         variable = &(dColumn[senderId - 1]);
         break;
       case mean_ans:
-        valid = (state == 4);
-        variable = &(dAvg[senderId - 1]);
-        break;
-      case real_ans:
         valid = (state == 7);
-        variable = &(dNodeOverall[senderId - 1]);
+        variable = &(dAvg[senderId - 1]);
         break;
     }
 
     if (valid) {
       boolArray[senderId - 1] = true;
       nBool++;
-      *variable = value;
+      if (code != start_ans)
+        *variable = value;
 
       if (nBool == nNodes - 1) {
-        state = (state + 1) % 8;
+        state = (state + 1) % 9;
         resetBool();
       }
     }
@@ -554,8 +471,4 @@ void LedConsensus::resetBool() {
   }
   nBool = 0;
   first = true;
-}
-
-bool LedConsensus::finished() {
-  return remainingIters == 0;
 }

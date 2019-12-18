@@ -21,13 +21,13 @@ PcComms pcComms;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
-bool writeFlag = false;
-volatile bool sendFlag = false;
+//bool writeFlag = false;
+//volatile bool sendFlag = false;
 
 byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
-constexpr byte ID0 = 7;
-constexpr byte ID1 = 8;
+#define ID0 7
+#define ID1 8
 
 //float u_pid;
 bool saturateInt = false;
@@ -35,10 +35,7 @@ bool saturateInt = false;
 
 float dutyCycles[maxNodes];
 float luxs[maxNodes];
-char pcMessage[11];
 
-float lux_ref;
-float aux;
 extern bool saturateInt;
 float u_pid = 0;
 float u;
@@ -50,7 +47,7 @@ void timerIntConfig();
 
 ISR(TIMER1_COMPA_vect) {
   sampFlag = true;
-  sendFlag = false;
+  //sendFlag = false;
 }
 /*---------------------------------------------*/
 
@@ -72,11 +69,9 @@ void setup() {
   // MCP2515 Mode Set
   mcp2515.setNormalMode();
 
-  float y_init[maxNodes] = {0.0, 0.0, 0.0};
-
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 1, y_init);
+  ledConsensus.init(nodeId, nNodes, 0.1, 1);
   pid.init(0.5, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
   pcComms.init(nodeId, nNodes);
 
@@ -111,26 +106,16 @@ void loop() {
       write(0, sample_lux, luxs[nodeId - 1]);
 
       for (byte i = 0; i < nNodes; i++) {
-        pcMessage[1] = (char) i;
-        memcpy(pcMessage + 2, dutyCycles + i, sizeof(float));
-        memcpy(pcMessage + 6, luxs + i, sizeof(float));
-        Serial.write(pcMessage, sizeof(pcMessage));
-        //Serial.print("Duty cycle of "); Serial.print(i+1); Serial.print(" = "); Serial.println(dutyCycles[i]);
-        //Serial.print("Lux of "); Serial.print(i+1); Serial.print(" = "); Serial.println(luxs[i]);
+        Serial.print('!'); Serial.print(i); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
       }
 
-      lux_ref = dutyCycles[nodeId - 1] * k[nodeId - 1];
-      aux = 0;
-      for (byte i = 0; i < nNodes; i++) {
-        if (i != nodeId - 1)
-          aux += dutyCycles[i] * k[i];
-      }
-      u_pid = pid.calc(lux_ref, luxs[nodeId - 1] - aux, saturateInt);
+      if (pid.on)
+        u_pid = pid.calc(ledConsensus.getLocalL(), luxs[nodeId - 1], saturateInt);
       //Serial.print("PID u"); Serial.println(u_pid);
       u = ledConsensus.dNodeOverall[nodeId - 1] + u_pid;
-      saturateInt = (u_pid <= 0.0 || u_pid >= 100.0);
+      saturateInt = (u <= 0.0 || u >= 100.0);
       dutyCycles[nodeId - 1] = u;
-      analogWrite(ledPin, constrain((int)(u*2.55+0.5), 0, 255));
+      analogWrite(ledPin, constrain((int)(u * 2.55 + 0.5), 0, 255));
       //Serial.print("u PID = "); Serial.println(u_pid);
     }
     //
@@ -212,10 +197,10 @@ void handleNewMessages() {
       */
       // Consensus run
       default:
-        if (code == duty_cycle_ask || code == mean_ask || code == real_ask)
+        if (code == start_ask || code == duty_cycle_ask || code == mean_ask || code == real_ask)
           ledConsensus.ans(senderId, code);
 
-        else if (code == duty_cycle_ans || code == mean_ans || code == real_ans)
+        else if (code = start_ans || code == duty_cycle_ans || code == mean_ans || code == real_ans)
           ledConsensus.rcv(senderId, code, value);
 
         else if (code >= occupancy_ask && code <= set_restart_ask)
