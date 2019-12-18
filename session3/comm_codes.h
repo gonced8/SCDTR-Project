@@ -54,4 +54,7 @@ const constexpr char set_restart_ans = 43;
 const constexpr char sample_duty_cyle = 44;
 const constexpr char sample_lux = 45;
 
+const constexpr char wait_ask = 46;
+const constexpr char wait_ans = 47;
+
 #endif //COM_CODES

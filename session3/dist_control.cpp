@@ -272,7 +272,7 @@ void LedConsensus::resetConsensus() {
 }
 
 void LedConsensus::run() {
-  //Serial.println(state);
+  // Serial.println(state);
   switch (state) {
     // See if need to start new consensus
     case 0:
@@ -293,13 +293,14 @@ void LedConsensus::run() {
 
     // Measure lux
     case 3:
+      Serial.println("Consensus started");
       dNodeOverall[nodeId - 1] = u;
       measuredLux = getLux(analogRead(ldrPin));
       Serial.print("Measured lux is "); Serial.println(measuredLux);
       //Serial.print("New o is "); Serial.println(aux);
       setLocalO(measuredLux - calcExpectedLux());
       resetConsensus();
-      
+
       /*for (byte i = 1; i <= nNodes; i++) {
         Serial.print("Led "); Serial.print(i); Serial.print(" "); Serial.println(dNodeOverall[i - 1]);
         }*/
@@ -335,12 +336,16 @@ void LedConsensus::run() {
       remainingIters--;
       //Serial.print("Remaining iterations: "); Serial.println(remainingIters);
       if (remainingIters > 0)
-        state = 4;
+        state = 9;
       else {
         dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
         pid.ip = 0;
-        state++;
+        state = 0;
       }
+      break;
+
+    case 9:
+      ask();
       break;
   }
 }
@@ -372,6 +377,10 @@ void LedConsensus::ask() {
       case 7:
         code = mean_ask;
         value = dAvg[nodeId - 1];
+        break;
+      case 9:
+        code = wait_ask;
+        value = remainingIters;
         break;
     }
 
@@ -412,9 +421,14 @@ void LedConsensus::ans(byte senderId, char code) {
       value = dNode[senderId - 1];
       break;
     case mean_ask:
-      valid = (state >= 7 || state <= 2);
+      valid = (state >= 7 || state <= 9);
       ans_code = mean_ans;
       value = dAvg[nodeId - 1];
+      break;
+    case wait_ask:
+      valid = (state == 9 || state == 4 || state == 5);
+      ans_code = wait_ans;
+      value = remainingIters;
       break;
   }
 
@@ -449,16 +463,24 @@ void LedConsensus::rcv(byte senderId, char code, float value) {
         valid = (state == 7);
         variable = &(dAvg[senderId - 1]);
         break;
+      case wait_ans:
+        valid = (state == 9);
+        break;
     }
 
     if (valid) {
       boolArray[senderId - 1] = true;
       nBool++;
-      if (code != start_ans)
+      if (code != start_ans && code != wait_ans)
         *variable = value;
 
       if (nBool == nNodes - 1) {
-        state = (state + 1) % 9;
+        if (state == 9){
+          state = 4;
+        }
+        else{
+          state++;
+        }
         resetBool();
       }
     }

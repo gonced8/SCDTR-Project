@@ -72,12 +72,11 @@ void setup() {
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
   ledConsensus.init(nodeId, nNodes, 0.1, 1);
-  pid.init(0.5, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
+  pid.init(1, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
   pcComms.init(nodeId, nNodes);
 
   timerIntConfig();
 
-  pcMessage[0] = '*'; pcMessage[10] = '\n';
 }
 
 void loop() {
@@ -145,10 +144,10 @@ void handleNewMessages() {
   while ( cf_stream.get(frame) ) {
     decodeMessage(frame, senderId, code, value);
 
-    /*Serial.print("Receiving: ");
-      Serial.print("\tFrom "); Serial.print(senderId);
-      Serial.print("\tCode "); Serial.print((byte)code);
-      Serial.print("\tValue "); Serial.println(value);*/
+    Serial.print("Receiving: ");
+    Serial.print("\tFrom "); Serial.print(senderId);
+    Serial.print("\tCode "); Serial.print((byte)code);
+    Serial.print("\tValue "); Serial.println(value);
 
     switch (code) {
       // Synchronize
@@ -197,10 +196,10 @@ void handleNewMessages() {
       */
       // Consensus run
       default:
-        if (code == start_ask || code == duty_cycle_ask || code == mean_ask || code == real_ask)
+        if (code == real_ask || code == start_ask || code == duty_cycle_ask || code == mean_ask || code == wait_ask)
           ledConsensus.ans(senderId, code);
 
-        else if (code = start_ans || code == duty_cycle_ans || code == mean_ans || code == real_ans)
+        else if (code == real_ans || code == start_ans || code == duty_cycle_ans || code == mean_ans || code == wait_ans)
           ledConsensus.rcv(senderId, code, value);
 
         else if (code >= occupancy_ask && code <= set_restart_ask)
