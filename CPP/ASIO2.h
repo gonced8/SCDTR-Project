@@ -66,11 +66,11 @@ float read_value;
 //void write_handler(const error_code &ec, size_t nbytes);
 void timer_handler(const error_code &ec);
 void read_handler(const error_code &ec, size_t nbytes);
-void prettyPrint (char *msg);
+void prettyPrint (std::string s);
 void start_read_input(const error_code & ec, size_t len);
 void handle_read_input (const error_code & ec, size_t len);
 void choose_case(std::string s);
-void send_arduino(int luminaire, int messagenum, float parameter = -1);
+void send_arduino(char luminaire, char messagenum, float parameter = -1);
 void open_port();
 
 #endif

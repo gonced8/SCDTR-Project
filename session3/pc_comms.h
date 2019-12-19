@@ -7,6 +7,8 @@
 #include "can_comms.h"
 #include "dist_control.h"
 
+#define MESSAGE_SIZE 64
+
 extern LedConsensus ledConsensus;
 extern float luxRefUnocc;
 extern float luxRefOcc;

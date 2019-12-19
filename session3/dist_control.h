@@ -23,7 +23,7 @@
 #define R1 10         // [KOhm]
 
 #define maxIters 20
-#define threshold 5
+#define threshold 20
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];

@@ -81,57 +81,89 @@ void read_handler(const error_code &ec, size_t nbytes) {
 	//data is now available at read_buf
 	float datalocal[paramNumber+1]; // All data, first being luminaire number
 	measure measurelocal;
+	std::stringstream mybuffer;
+	char msg;
 
-	char msg[256] = {0};
-	arduinocomms_buff.sgetn(reinterpret_cast<char *>(msg), arduinocomms_buff.size());
+	/*
+	mybuffer.str(std::string()); //Clear buffer
+	mybuffer << &arduinocomms_buff;
+	msg = mybuffer.str().at(0);
+	//char msg[256] = {0};
+	//int sizebuff = arduinocomms_buff.size();
+	//arduinocomms_buff.sgetn(reinterpret_cast<char *>(msg), arduinocomms_buff.size());
 
-	//std::cout << msg << std::endl;
+	std::cout << mybuffer.str() << std::endl;
+	*/
+	
+	std::istream is(&arduinocomms_buff);
+	std::string line;
+	std::getline(is, line);
 
-	if(msg[0] == '!'){ // Different message
-		prettyPrint(msg);
+	msg = line.at(0);
+
+	//std::cout << line << std::endl;
+
+	if(msg == '?'){ // Different message
+		//prettyPrint(mybuffer.str());
+		prettyPrint(line);
 	}
 
-	else if(msg[0] == '*'){
-		datalocal[0] = static_cast<float> (msg[1]);
-		datalocal[1] = *(float *) (msg+2);
-		datalocal[2] = *(float *) (msg+6);
-		for(int i=0; i<paramNumber;i++){
-				data[(static_cast<int>(datalocal[0]) - 1)*paramNumber + i] = datalocal[i+1];
-		}
-		measurelocal.current_time = time(NULL);
-		measurelocal.measured_illuminance = datalocal[1];
-		measurelocal.duty_cycle = datalocal[2];
-		if(current_occupation[static_cast<int>(datalocal[0]) - 1] == 1){
-			measurelocal.current_ref = current_ref_occupied[static_cast<int>(datalocal[0]) - 1];
-		}
-		else{
-			measurelocal.current_ref = current_ref_unoccupied[static_cast<int>(datalocal[0]) - 1];
+	else if(msg == '!'){
+		int auxint;
+		int readparameters;
+		readparameters = sscanf(mybuffer.str().c_str(), "!%d %f %f", &auxint, &datalocal[1], &datalocal[2]);
+		if(readparameters == 3){
+			datalocal[0] = static_cast<float> (auxint);
+			for(int i=0; i<paramNumber;i++){
+					data[(static_cast<int>(datalocal[0]) - 1)*paramNumber + i] = datalocal[i+1];
+			}
+			measurelocal.current_time = time(NULL);
+			measurelocal.measured_illuminance = datalocal[1];
+			measurelocal.duty_cycle = datalocal[2];
+			if(current_occupation[static_cast<int>(datalocal[0]) - 1] == 1){
+				measurelocal.current_ref = current_ref_occupied[static_cast<int>(datalocal[0]) - 1];
+			}
+			else{
+				measurelocal.current_ref = current_ref_unoccupied[static_cast<int>(datalocal[0]) - 1];
+			}
+			if(realtime[static_cast<int>(datalocal[0] - 1)*2+0]){
+				std::cout << "s l " << static_cast<int>(datalocal[0]) << " " << datalocal[1] << " " << ctime(& measurelocal.current_time);
+			}
+			if(realtime[static_cast<int>(datalocal[0] - 1)*2+1]){
+				std::cout << "s d " << static_cast<int>(datalocal[0]) << " " << datalocal[2] << " " << ctime(& measurelocal.current_time);
+			}
+			bufferqueue[static_cast<int>(datalocal[0]) - 1].push(measurelocal);
+			if(bufferqueue[static_cast<int>(datalocal[0]) - 1].size() > perminute) // More than one minute
+				bufferqueue[static_cast<int>(datalocal[0]) - 1].pop();
+			energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[1]/100)*(60/perminute);
 		}
 
-		if(realtime[static_cast<int>(datalocal[0] - 1)*2+0]){
-			std::cout << "s l " << static_cast<int>(datalocal[0]) << " " << datalocal[1] << " " << ctime(& measurelocal.current_time);
-		}
-		if(realtime[static_cast<int>(datalocal[0] - 1)*2+1]){
-			std::cout << "s d " << static_cast<int>(datalocal[0]) << " " << datalocal[2] << " " << ctime(& measurelocal.current_time);
-		}
-
-		bufferqueue[static_cast<int>(datalocal[0]) - 1].push(measurelocal);
-		if(bufferqueue[static_cast<int>(datalocal[0]) - 1].size() > perminute) // More than one minute
-			bufferqueue[static_cast<int>(datalocal[0]) - 1].pop();
-		energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[1]/100)*(60/perminute);
 	}
+
 
 	tim.expires_from_now(boost::posix_time::milliseconds(1));
 	tim.async_wait(timer_handler);
 }
 
-void prettyPrint (char *msg){
+void prettyPrint (std::string s){
+	int readparameters;
 	char messagenum;
 	int luminaire;
 	float multifunfloat;
-	messagenum = msg[1];
-	luminaire = (int) msg[2];
-	multifunfloat = *(float *)(msg+3);
+	//readparameters = sscanf(s.c_str(), "?%d %c %f", &luminaire, &messagenum, &multifunfloat);
+
+	luminaire = s.at(1);
+	messagenum = s.at(3);
+	multifunfloat = std::stof(s.substr(5), NULL);
+
+	/*
+	if(readparameters != 3){
+		std::cout << "Not 3 parameters\n";
+		return;
+	}
+	*/
+
+	std::cout << "message num " << (int)messagenum << std::endl;
 
 	switch(messagenum){
 		case occupancy_ans:
@@ -226,16 +258,17 @@ void choose_case(std::string s) {
 			luminaire = 0; // All luminaires
 		}
 		if(s.at(2) == 'l'){
-			std::cout << "l " << luminaire << " " << data[luminaire*paramNumber + 0] << std::endl;
+			std::cout << "l " << luminaire << " " << data[(luminaire-1)*paramNumber + 0] << std::endl;
 		}
 		else if(s.at(2) == 'd'){
-			std::cout << "d " << luminaire << " " << data[luminaire*paramNumber + 1] << std::endl;
+			std::cout << "d " << luminaire << " " << data[(luminaire-1)*paramNumber + 1] << std::endl;
 		}
 		else if(s.at(2) == 'o'){
 			std::cout << "Entrou \n";
 			send_arduino(luminaire, occupancy_ask);
 		}
 		else if(s.at(2) == 'O'){
+			std::cout << (int) lower_bound_occupied_ask << std::endl;
 			send_arduino(luminaire, lower_bound_occupied_ask);
 		}
 		else if(s.at(2) == 'U'){
@@ -270,7 +303,7 @@ void choose_case(std::string s) {
 		}
 		else if(s.at(2) == 'e'){
 			if(luminaire != 0){
-				std::cout << "e " << luminaire << " " << energy[luminaire] << std::endl;
+				std::cout << "e " << luminaire << " " << energy[luminaire-1] << std::endl;
 			}
 			else{
 				multifunfloat = 0;
@@ -284,7 +317,7 @@ void choose_case(std::string s) {
 			if(luminaire != 0){
 				multifunfloat = 0;
 				int i = 0;
-				for(Node *node=bufferqueue[luminaire].front(); node!=NULL; node=node->next()){
+				for(Node *node=bufferqueue[luminaire-1].front(); node!=NULL; node=node->next()){
 					multifunfloat += std::max((float)0, node->value().measured_illuminance - node->value().current_ref);
 					i++;
 				}
@@ -308,7 +341,7 @@ void choose_case(std::string s) {
 			if(luminaire != 0){
 				multifunfloat = 0;
 				int i = 0;
-				for(Node *node=bufferqueue[luminaire].front(); node!=NULL; node=node->next()){
+				for(Node *node=bufferqueue[luminaire-1].front(); node!=NULL; node=node->next()){
 					if(node->next() != NULL && node->next()->next() != NULL){
 						if((node->value().measured_illuminance - node->next()->value().measured_illuminance) * (node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance) < 0){
 							multifunfloat += (abs(node->value().measured_illuminance - node->next()->value().measured_illuminance) + abs(node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance))*perminute/(2*60);
@@ -341,23 +374,23 @@ void choose_case(std::string s) {
 		luminaire = std::stoi(s.substr(2));
 		multifunfloat = std::stoi(s.substr(4));
 		if(multifunfloat == 1){
-			current_occupation[luminaire] = 1;
+			current_occupation[luminaire-1] = 1;
 		}
 		else{
-			current_occupation[luminaire] = 0;
+			current_occupation[luminaire-1] = 0;
 		}
 		send_arduino(luminaire, set_occupied_ask, multifunfloat);
 	}
 	else if(s.at(0) == 'O'){
 		luminaire = std::stoi(s.substr(2));
 		multifunfloat = std::stof(s.substr(4));
-		current_ref_occupied[luminaire] = multifunfloat;
+		current_ref_occupied[luminaire-1] = multifunfloat;
 		send_arduino(luminaire, set_occupied_value_ask, multifunfloat);
 	}
 	else if(s.at(0) == 'U'){
 		luminaire = std::stoi(s.substr(2));
 		multifunfloat = std::stof(s.substr(4));
-		current_ref_unoccupied[luminaire] = multifunfloat;
+		current_ref_unoccupied[luminaire-1] = multifunfloat;
 		send_arduino(luminaire, set_unoccupied_value_ask, multifunfloat);
 	}
 	else if(s.at(0) == 'c'){
@@ -371,34 +404,31 @@ void choose_case(std::string s) {
 	else if(s.at(0) == 'b'){
 		if(s.at(2) == 'l'){
 			luminaire = std::stoi(s.substr(4));
-			printList(bufferqueue[luminaire], 1);
+			printList(bufferqueue[luminaire-1], 1);
 		}
 		else if(s.at(2) == 'd'){
 			luminaire = std::stoi(s.substr(4));
-			printList(bufferqueue[luminaire], 2);
+			printList(bufferqueue[luminaire-1], 2);
 		}
 	}
 	else if(s.at(0) == 's'){
 		if(s.at(2) == 'l'){
 			luminaire = std::stoi(s.substr(4));
-			realtime[luminaire*2+0] = !realtime[luminaire*2+0];
+			realtime[(luminaire-1)*2+0] = !realtime[(luminaire-1)*2+0];
 		}
 		else if(s.at(2) == 'd'){
 			luminaire = std::stoi(s.substr(4));
-			realtime[luminaire*2+1] = !realtime[luminaire*2+1];
+			realtime[(luminaire-1)*2+1] = !realtime[(luminaire-1)*2+1];
 		}
 	}
 }
 
-void send_arduino(int luminaire, int messagenum, float parameter){
-	char message[6];
+void send_arduino(char luminaire, char messagenum, float parameter){
+	std::ostringstream os;
+	os << luminaire << ' ' << messagenum << ' ' << parameter << '\n';
+	std::cout << os.str();
 
-	message[0] = (char) luminaire;
-	message[1] = (char) messagenum;
-
-	memcpy(message+2, &parameter, sizeof(float));
-
-	async_write(sp, buffer(message, 6),
+	async_write(sp, buffer(os.str()),
 			[](const error_code &ec, size_t len){;}
 				);
 }

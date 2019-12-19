@@ -234,10 +234,10 @@ void PcComms::rcv(byte senderId, char code, float value) {
       break;
   }
 
-  Serial.print('?'); Serial.print(senderId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
+  Serial.print('?'); Serial.write(senderId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
 }
 
-char read_char(byte timeout) {
+char read_char(unsigned int timeout) {
   // Read a single char with a timeout in milliseconds
   for (byte i = 0; !Serial.available() && i < timeout; i++) {
     delay(1);
@@ -247,11 +247,11 @@ char read_char(byte timeout) {
 
 void PcComms::SerialDecode() {
   // Read Serial
-  char message[128];
+  char message[MESSAGE_SIZE];
   byte i;
   char ch = ' ';
 
-  for (i = 0; i < sizeof(message); i++) {
+  for (i = 0; i < MESSAGE_SIZE; i++) {
     ch = read_char(1000);
     if (ch == -1)
       return;
@@ -267,10 +267,16 @@ void PcComms::SerialDecode() {
   char code;
   float value;
 
-  sscanf(message, "%c %c %f", &luminaire, &code, &value);
-
+  Serial.println(message);
+  //sscanf(message, "%c %c %f", &luminaire, &code, &value);
+  //sscanf(message, "%d %d %*f", &luminaire, &code);
+  luminaire = message[0];
+  code = message[2];
+  value = atof(message+4);
+  
   // Check if message is for hub
   bool own = luminaire == nodeId;
+  Serial.print("Own "); Serial.println(own);
 
   // Debug
   Serial.print("Luminaire ");
@@ -287,6 +293,7 @@ void PcComms::SerialDecode() {
         id_occupancy = luminaire;
       }
       else {
+        Serial.println("ITS ME");
         code = occupancy_ans;
         value = (float) deskOccupancy;
       }
@@ -445,8 +452,9 @@ void PcComms::SerialDecode() {
       break;
   }
 
+  delay(10);
   if (!own)
     first = true;
   else
-    Serial.print('?'); Serial.print(nodeId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
+    Serial.print('?'); Serial.write(nodeId); Serial.print(' '); Serial.print(code); Serial.print(' '); Serial.println(value);
 }

@@ -45,5 +45,8 @@ float PID::calc(float ref, float y, bool saturate) {
   ip = i;
   dp = d;
 
+  //Serial.print("error "); Serial.println(e);
+  //Serial.print("p = "); Serial.println(p)+i+d;
+
   return p + i + d;
 }

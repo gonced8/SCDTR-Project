@@ -104,12 +104,14 @@ void loop() {
       write(0, sample_duty_cyle, dutyCycles[nodeId - 1]);
       write(0, sample_lux, luxs[nodeId - 1]);
 
+
       for (byte i = 0; i < nNodes; i++) {
-        Serial.print('!'); Serial.print(i); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
+        Serial.print('!'); Serial.print(i + 1); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
       }
 
+
       if (pid.on)
-        u_pid = pid.calc(ledConsensus.getLocalL(), luxs[nodeId - 1], saturateInt);
+        u_pid = pid.calc(ledConsensus.L_i, luxs[nodeId - 1], saturateInt);
       //Serial.print("PID u"); Serial.println(u_pid);
       u = ledConsensus.dNodeOverall[nodeId - 1] + u_pid;
       saturateInt = (u <= 0.0 || u >= 100.0);
@@ -144,10 +146,12 @@ void handleNewMessages() {
   while ( cf_stream.get(frame) ) {
     decodeMessage(frame, senderId, code, value);
 
-    Serial.print("Receiving: ");
-    Serial.print("\tFrom "); Serial.print(senderId);
-    Serial.print("\tCode "); Serial.print((byte)code);
-    Serial.print("\tValue "); Serial.println(value);
+    /*
+      Serial.print("Receiving: ");
+      Serial.print("\tFrom "); Serial.print(senderId);
+      Serial.print("\tCode "); Serial.print((byte)code);
+      Serial.print("\tValue "); Serial.println(value);
+    */
 
     switch (code) {
       // Synchronize
@@ -180,20 +184,6 @@ void handleNewMessages() {
         luxs[senderId - 1] = value;
         break;
 
-      // Duty cycle
-      /*case duty_cycle_ack:
-        ledConsensus.receive_ack(senderId);
-        break;*/
-      /*
-            // Consensus initial communication
-            case consensus_tell:
-              ledConsensus.rcvStart(senderId);
-              break;
-
-            case consensus_rcv:
-              ledConsensus.rcvAns(senderId);
-              break;
-      */
       // Consensus run
       default:
         if (code == real_ask || code == start_ask || code == duty_cycle_ask || code == mean_ask || code == wait_ask)
