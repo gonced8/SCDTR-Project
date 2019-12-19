@@ -20,118 +20,163 @@ void Calibration::init(byte id, byte n) {
   nodeId = id;
   nNodes = n;
   on = true;
-  waiting = false;
-  action = turn;
+  state = 0;
   nodeCounter = 0;
   for (byte i = 0; i < nNodes; i++) {
-    handshakes[i] = false;
+    boolArray[i] = false;
   }
-  nHand = 0;
+  nBool = 0;
 }
 
 void Calibration::run(LedConsensus &ledConsensus) {
   uint8_t msg[data_bytes];
 
-  if (waiting) {
-    // Successful handshakes
-    if (nHand >= (nNodes - 1)) {
-      waiting = false;
+  switch (state) {
+    // Start
+    case 0:
+      ask();
+      break;
 
-      // Reset handshakes array
-      for (byte i = 0; i < nNodes; i++) {
-        handshakes[i] = false;
-      }
-      nHand = 0;
-    }
-    // Missing handshakes
-    else {
-      unsigned long curr_time = millis();
-      // Timed out, send again
-      if (curr_time - last_time >= timeout) {
-        write(0, calibr_wait, nodeCounter);
-        last_time = curr_time;
-        Serial.println("Wrote wait message");
-      }
-    }
+    // Set led
+    case 1:
+      Serial.print("nodeCounter = "); Serial.println(nodeCounter);
+      if (nodeCounter == nodeId)
+        analogWrite(ledPin, 255);
+      else
+        analogWrite(ledPin, 0);
+      state++;
+      break;
+
+    // Sync
+    case 2:
+      ask();
+      break;
+
+    // Measure
+    case 3:
+      delay(500);
+      measurements[nodeCounter] = analogRead(ldrPin);
+      nodeCounter++;
+      state++;
+      break;
+
+    case 4:
+      ask();
+      break;
   }
-  else {
-    switch (action) {
-      case turn:
-        if (nodeCounter == nodeId)
-          analogWrite(ledPin, 255);
-        else
-          analogWrite(ledPin, 0);
+}
 
-        /*// Check if end calibration
-          if (nodeCounter > nNodes) {
-          on = false;
+void Calibration::ask() {
+  unsigned long current_time = millis();
+  char code;
 
-          float o_temp = getLux(measurements[0]);
-          ledConsensus.setLocalO(o_temp);
+  switch (state) {
+    case 0:
+      code = calibr_start_ask;
+      break;
+    case 2:
+      code = calibr_set_ask;
+      break;
+    case 4:
+      code = calibr_measure_ask;
+      break;
+  }
 
-          for (byte i = 1; i <= nNodes; i++) {
-            k[i - 1] = getLux(measurements[i]) / 100;
-            Serial.println(k[i - 1]);
-          }
+  if (first) {
+    write(0, code, 0);
+    last_time = current_time;
+    first = false;
+  }
+  else if (current_time - last_time >= timeout) {
+    for (byte i = 1; i <= nNodes; i++) {
+      if (i != nodeId && !boolArray[i - 1]) {
+        write(i, code, 0);
+      }
+    }
+    last_time = current_time;
+  }
+}
 
-          Serial.println("Calibration complete");
-          return;
-          }*/
+void Calibration::ans(byte senderId, char code) {
+  bool valid = false;
+  char ans_code;
+  float ans_value;
 
-        action = measure;
+  switch (code) {
+    case calibr_start_ask:
+      valid = (state <= 2);
+      ans_code = calibr_start_ans;
+      break;
+    case calibr_set_ask:
+      valid = (state >= 2 && state <= 4);
+      ans_code = calibr_set_ans;
+      break;
+    case calibr_measure_ask:
+      valid = (state >= 4 || (state >= 1 && state <= 2));
+      ans_code = calibr_measure_ans;
+      break;
+  }
+
+  if (valid) {
+    write(senderId, ans_code, 0);
+    rcv(senderId, ans_code);
+  }
+}
+
+void Calibration::rcv(byte senderId, char code) {
+  if (!boolArray[senderId - 1]) {
+    bool valid = false;
+
+    switch (code) {
+      case calibr_start_ans:
+        valid = (state == 0);
         break;
+      case calibr_set_ans:
+        valid = (state == 2);
+        break;
+      case calibr_measure_ans:
+        valid = (state == 4);
+        break;
+    }
 
-      case measure:
-        if (nodeCounter > nNodes) {
-          on = false;
+    if (valid) {
+      boolArray[senderId - 1] = true;
+      nBool++;
 
-          b[nodeId - 1] = getB(measurements[nodeId]);
+      if (nBool == nNodes - 1) {
+        // Final state
+        if (state == 4) {
+          // Next config
+          if (nodeCounter <= nNodes)
+            state = 1;
+          // End calibration
+          else {
+            state = 5;  // state doesn't exist. standby state
+            on = false;
 
-          float o_temp = getLux(measurements[0]);
-          ledConsensus.setLocalO(o_temp);
+            b[nodeId - 1] = getB(measurements[nodeId]);
 
-          for (byte i = 1; i <= nNodes; i++) {
-            k[i - 1] = getLux(measurements[i]) / 100;
-            Serial.println(k[i - 1]);
+            for (byte i = 1; i <= nNodes; i++) {
+              k[i - 1] = getLux(measurements[i]) / 100;
+              Serial.println(k[i - 1]);
+            }
+
+            Serial.println("Calibration complete");
           }
-
-          //
-          float aux = 0;
-          for (byte i = 0; i < nNodes; i++)
-            aux += 100 * k[i];
-          Serial.print("Max actuation is "); Serial.println(aux);
-          //
-
-          Serial.println("Calibration complete");
-          return;
         }
-        measurements[nodeCounter] = analogRead(ldrPin);
+        else
+          state++;
 
-        nodeCounter++;
-        action = turn;
-        break;
+        resetBool();
+      }
     }
-
-    delay(500);
-    write(0, calibr_wait, nodeCounter);
-    waiting = true;
-    last_time = millis();
-    Serial.println("Wrote wait message");
-  }
-  return;
-}
-
-void Calibration::receive_answer(byte senderId, float value) {
-  Serial.print("Current "); Serial.println(nodeCounter);
-  if (!handshakes[senderId - 1] && ((int) value) == nodeCounter) {
-    nHand++;
-    handshakes[senderId - 1] = true;
   }
 }
 
-void Calibration::send_answer(byte senderId, float value) {
-  if (value <= nodeCounter)
-    write(senderId, calibr_answer, value);
-
-  Serial.print("Calibr: Answered node "); Serial.println(senderId);
+void Calibration::resetBool() {
+  for (byte i = 0; i < nNodes; i++) {
+    boolArray[i] = false;
+  }
+  nBool = 0;
+  first = true;
 }

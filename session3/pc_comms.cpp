@@ -20,7 +20,10 @@ void PcComms::init(byte _nodeId, byte _nNodes) {
   received_set_occupied_value = true;
   received_set_unoccupied_value = true;
   received_set_cost = true;
-  received_set_restart = true;
+
+  for (byte i = 0; i < nNodes; i++)
+    received_set_restart[i] = true;
+  n_received_set_restart = nNodes;
 
   occupancy = 0;
   lower_bound_occupied = 0;
@@ -91,8 +94,18 @@ void PcComms::ask() {
     if (!received_set_cost)
       write(id_set_cost, set_cost_ask, set_cost);
 
-    if (!received_set_restart)
-      write(id_set_restart, set_restart_ask, set_restart);
+    if (n_received_set_restart < nNodes - 1) {
+      if (first) {
+        write(0, set_restart_ask, 0);
+      }
+      else if (current_time - last_time >= timeout) {
+        for (byte i = 1; i <= nNodes; i++) {
+          if (i != nodeId && !received_set_restart[i - 1]) {
+            write(i, set_restart_ask, 0);
+          }
+        }
+      }
+    }
 
     first = false;
     last_time = current_time;
@@ -151,6 +164,7 @@ void PcComms::ans(byte senderId, char code, float value) {
       break;
     case set_restart_ask:
       write(senderId, set_restart_ans, 0);
+      resetFunc();
       break;
   }
 }
@@ -228,8 +242,18 @@ void PcComms::rcv(byte senderId, char code, float value) {
       }
       break;
     case set_restart_ans:
-      if (!received_set_restart) {
-        received_set_restart = true;
+      if (!received_set_restart[senderId - 1]) {
+        received_set_restart[senderId - 1] = true;
+        n_received_set_restart++;
+
+        if (n_received_set_restart == nNodes - 1) {
+          //All reset
+          Serial.print('?'); Serial.write(nodeId); Serial.print(' '); Serial.print(set_restart_ans); Serial.print(' '); Serial.println(1);
+          resetFunc();
+        }
+        else {
+          return;
+        }
       }
       break;
   }
@@ -440,15 +464,12 @@ void PcComms::SerialDecode() {
       break;
 
     case set_restart_ask:
-      if (!own) {
-        received_set_restart = false;
-        id_set_restart = luminaire;
-        set_restart = value;
-      }
-      else {
-        code = set_restart_ans;
-        value = 0;
-      }
+      first = true;
+      id_set_restart = 0;
+      for (byte i = 0; i < nNodes; i++)
+        received_set_restart[i] = false;
+      n_received_set_restart = 0;
+      return;
       break;
   }
 

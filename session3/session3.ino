@@ -73,7 +73,10 @@ void setup() {
 
   timerIntConfig();
 
+  Serial.println("Setup done");
 }
+
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void loop() {
   //Serial.print("interrupt "); Serial.println(interrupt);
@@ -159,19 +162,6 @@ void handleNewMessages() {
         sync.receive_answer(senderId);
         break;
 
-      // Calibrate
-      case calibr_start:
-        calibrator.init(nodeId, nNodes);
-        break;
-
-      case calibr_answer:
-        calibrator.receive_answer(senderId, value);
-        break;
-
-      case calibr_wait:
-        calibrator.send_answer(senderId, value);
-        break;
-
       case sample_duty_cyle:
         dutyCycles[senderId - 1] = value;
         break;
@@ -180,8 +170,20 @@ void handleNewMessages() {
         luxs[senderId - 1] = value;
         break;
 
+      case set_restart_ask:
+        write(senderId, set_restart_ans, 0);
+        if (!calibrator.isOn())
+          resetFunc();
+        break;
+
       // Consensus run
       default:
+        if (code == calibr_start_ask || code == calibr_set_ask || code == calibr_measure_ask)
+          calibrator.ans(senderId, code);
+
+        else if (code == calibr_start_ans || code == calibr_set_ans || code == calibr_measure_ans)
+          calibrator.rcv(senderId, code);
+
         if (code == real_ask || code == start_ask || code == duty_cycle_ask || code == mean_ask || code == wait_ask)
           ledConsensus.ans(senderId, code, value);
 

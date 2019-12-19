@@ -4,9 +4,12 @@
 const constexpr char hub_q = 1;
 const constexpr char hub_a = 2;
 
-const constexpr char calibr_start = 3;
-const constexpr char calibr_wait = 4;
-const constexpr char calibr_answer = 5;
+const constexpr char calibr_start_ask = 3;
+const constexpr char calibr_start_ans = 4;
+const constexpr char calibr_set_ask = 5;
+const constexpr char calibr_set_ans = 48;
+const constexpr char calibr_measure_ask = 49;
+const constexpr char calibr_measure_ans = 50;
 
 const constexpr char sync_ask = 6;
 const constexpr char sync_ans = 7;

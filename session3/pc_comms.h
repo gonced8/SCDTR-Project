@@ -14,6 +14,8 @@ extern float luxRefUnocc;
 extern float luxRefOcc;
 extern bool deskOccupancy;
 
+extern void(* resetFunc) (void);
+
 class PcComms {
     /*-------Variable declaration-------*/
     // Node identification
@@ -35,7 +37,9 @@ class PcComms {
     bool received_set_occupied_value;
     bool received_set_unoccupied_value;
     bool received_set_cost;
-    bool received_set_restart;
+    
+    bool received_set_restart[maxNodes];
+    byte n_received_set_restart;
 
     float occupancy;
     float lower_bound_occupied;

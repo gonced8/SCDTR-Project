@@ -13,6 +13,7 @@
 #include "dist_control.h"
 
 #define maxNodes 3
+#define max_lux 100
 
 /*-------Variable declaration-------*/
 
@@ -22,21 +23,21 @@ class Calibration {
     byte nNodes, nodeId, nodeCounter;
     int measurements[maxNodes + 1];
     bool on = false;
-    enum Action {turn = 't', measure = 'm'};
-    Action action;
-    bool waiting;
-    bool handshakes[maxNodes];
-    byte nHand;
+    byte state;
+    bool first;
+    bool boolArray[maxNodes];
+    byte nBool;
     unsigned long last_time;
     const unsigned int timeout = 500;
-    const float max_lux = 100;
   public:
     bool isOn();
     float getB(int measurement);
     void init(byte id, byte n);
     void run(LedConsensus &ledConsensus);
-    void receive_answer(byte senderId, float value);
-    void send_answer(byte senderId, float value);
+    void ask();
+    void ans(byte senderId, char code);
+    void rcv(byte senderId, char code);
+    void resetBool();
 };
 /*--------Function propotypes--------*/
 
