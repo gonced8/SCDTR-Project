@@ -130,7 +130,7 @@ void PcComms::ans(byte senderId, char code, float value) {
       write(senderId, current_external_ans, ledConsensus.o_i);
       break;
     case current_reference_ask:
-      write(senderId, current_reference_ans, ledConsensus.dNodeOverall[nodeId - 1]);
+      write(senderId, current_reference_ans, u * k[nodeId - 1]);
       break;
     case current_cost_ask:
       write(senderId, current_cost_ans, ledConsensus.c_i);
@@ -374,7 +374,7 @@ void PcComms::SerialDecode() {
       }
       else {
         code = current_reference_ans;
-        value = millis() / 1000.0;      // ESTA MAL!!!!!
+        value = u*k[nodeId - 1];
       }
       break;
 
@@ -396,7 +396,7 @@ void PcComms::SerialDecode() {
       }
       else {
         code = time_since_restart_ans;
-        value = millis() / 1000.0;
+        value = ((float)millis()) / 1000.0;
       }
       break;
 

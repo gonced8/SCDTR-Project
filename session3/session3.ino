@@ -126,7 +126,7 @@ void loop() {
     }
     pcComms.ask();
   }
-  delay(10);
+  delay(1);
 }
 
 void handleNewMessages() {

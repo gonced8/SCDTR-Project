@@ -9,6 +9,8 @@
 
 #define MESSAGE_SIZE 64
 
+extern float u;
+
 extern LedConsensus ledConsensus;
 extern float luxRefUnocc;
 extern float luxRefOcc;

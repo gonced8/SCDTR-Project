@@ -60,7 +60,7 @@ void printList(LinkedList toprint, int argument) {
 }
 
 void open_port(){
-		char port_name[] = "/dev/cu.usbmodem141101";
+		char port_name[] = "/dev/cu.usbmodem14101";
 	sp.open(port_name, ec);
 	while(ec){
 		std::cout << "Could not open serial port" << std::endl;
@@ -83,6 +83,7 @@ void read_handler(const error_code &ec, size_t nbytes) {
 	measure measurelocal;
 	std::stringstream mybuffer;
 	char msg;
+	struct timeval tv;
 
 	/*
 	mybuffer.str(std::string()); //Clear buffer
@@ -94,7 +95,7 @@ void read_handler(const error_code &ec, size_t nbytes) {
 
 	std::cout << mybuffer.str() << std::endl;
 	*/
-	
+
 	std::istream is(&arduinocomms_buff);
 	std::string line;
 	std::getline(is, line);
@@ -112,17 +113,20 @@ void read_handler(const error_code &ec, size_t nbytes) {
 		int auxint;
 		int readparameters;
 	    //	readparameters = sscanf(mybuffer.str().c_str(), "!%d %f %f", &auxint, &datalocal[1], &datalocal[2]);
-		
+		float diff_time;
+
 		auxint = line.at(1);
 		std::string::size_type sz;
-		datalocal[1] = std::stof(line.substr(3), &sz);
+		datalocal[1] = std::stof(line.substr(3), &sz);
 		datalocal[2] = std::stof(line.substr(3+sz), NULL);
 
 			datalocal[0] = static_cast<float> (auxint);
 			for(int i=0; i<paramNumber;i++){
 					data[(static_cast<int>(datalocal[0]) - 1)*paramNumber + i] = datalocal[i+1];
 			}
+			gettimeofday(&tv, NULL);
 			measurelocal.current_time = time(NULL);
+			measurelocal.tv = tv;
 			measurelocal.measured_illuminance = datalocal[1];
 			measurelocal.duty_cycle = datalocal[2];
 			if(current_occupation[static_cast<int>(datalocal[0]) - 1] == 1){
@@ -137,14 +141,18 @@ void read_handler(const error_code &ec, size_t nbytes) {
 			if(realtime[static_cast<int>(datalocal[0] - 1)*2+1]){
 				std::cout << "s d " << static_cast<int>(datalocal[0]) << " " << datalocal[2] << " " << ctime(& measurelocal.current_time);
 			}
+			if (bufferqueue[static_cast<int>(datalocal[0])-1].size() > 0) {
+				diff_time = ((float)(measurelocal.tv.tv_usec - bufferqueue[static_cast<int>(datalocal[0])-1].back()->value().tv.tv_usec))*0.000001;
+				if (diff_time >= 0)
+					energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[2]/100)*diff_time;
+			}
 			bufferqueue[static_cast<int>(datalocal[0]) - 1].push(measurelocal);
 			if(bufferqueue[static_cast<int>(datalocal[0]) - 1].size() > perminute) // More than one minute
 				bufferqueue[static_cast<int>(datalocal[0]) - 1].pop();
-			energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[1]/100)*(60/perminute);
 
 	}
-	else
-		std::cout << line << std::endl;
+	/*else
+		std::cout << line << std::endl;*/
 
 
 	tim.expires_from_now(boost::posix_time::milliseconds(1));
@@ -155,20 +163,12 @@ void prettyPrint (std::string s){
 	char messagenum;
 	int luminaire;
 	float multifunfloat;
-	//readparameters = sscanf(s.c_str(), "?%d %c %f", &luminaire, &messagenum, &multifunfloat);
 
 	luminaire = s.at(1);
 	messagenum = s.at(3);
 	multifunfloat = std::stof(s.substr(5), NULL);
 
-	/*
-	if(readparameters != 3){
-		std::cout << "Not 3 parameters\n";
-		return;
-	}
-	*/
-
-	std::cout << "message num " << (int)messagenum << std::endl;
+	//std::cout << "message num " << (int)messagenum << std::endl;
 
 	switch(messagenum){
 		case occupancy_ans:
@@ -295,14 +295,14 @@ void choose_case(std::string s) {
 		}
 		else if(s.at(2) == 'p'){
 			if(luminaire != 0){
-				std::cout << "p " << luminaire << " " << data[luminaire*paramNumber + 1]/100 << std::endl;
+				std::cout << "p " << luminaire << " " << bufferqueue[luminaire-1].back()->value().duty_cycle/100 << std::endl;
 			}
 			else{
 				multifunfloat = 0;
 				for(int i = 0; i < luminaireNumber; i++){
-					multifunfloat += data[i*paramNumber + 1];
+					multifunfloat += bufferqueue[i].back()->value().duty_cycle/100;
 				}
-				std::cout << "p T " << multifunfloat/100  << std::endl;
+				std::cout << "p T " << multifunfloat << std::endl;
 			}
 		}
 		else if(s.at(2) == 't'){
@@ -345,19 +345,23 @@ void choose_case(std::string s) {
 			}
 		}
 		else if(s.at(2) == 'f'){
+			float diff_time;
 			if(luminaire != 0){
 				multifunfloat = 0;
 				int i = 0;
 				for(Node *node=bufferqueue[luminaire-1].front(); node!=NULL; node=node->next()){
 					if(node->next() != NULL && node->next()->next() != NULL){
 						if((node->value().measured_illuminance - node->next()->value().measured_illuminance) * (node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance) < 0){
-							multifunfloat += (abs(node->value().measured_illuminance - node->next()->value().measured_illuminance) + abs(node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance))*perminute/(2*60);
-							i++;
+							diff_time = (node->next()->next()->value().tv.tv_usec - node->value().tv.tv_usec);
+							if (diff_time > 0) {
+								multifunfloat += (abs(node->value().measured_illuminance - node->next()->value().measured_illuminance) + abs(node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance))/diff_time;
+								i++;
+							}
 						}
 					}
 				}
 				multifunfloat /= i;
-				std::cout << "f " << luminaire << " " << multifunfloat << std::endl;
+				std::cout << "f " << luminaire << " " << multifunfloat*1000000 << std::endl;
 			}
 			else{
 				multifunfloat = 0;
@@ -366,14 +370,17 @@ void choose_case(std::string s) {
 					for(Node *node=bufferqueue[luminaire].front(); node!=NULL; node=node->next()){
 						if(node->next() != NULL && node->next()->next() != NULL){
 							if((node->value().measured_illuminance - node->next()->value().measured_illuminance) * (node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance) < 0){
-								multifunfloat += (abs(node->value().measured_illuminance - node->next()->value().measured_illuminance) + abs(node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance))*perminute/(2*60);
-								i++;
+							    diff_time = (node->next()->next()->value().tv.tv_usec - node->value().tv.tv_usec);
+								if (diff_time > 0 ) {
+									multifunfloat += (abs(node->value().measured_illuminance - node->next()->value().measured_illuminance) + abs(node->next()->value().measured_illuminance - node->next()->next()->value().measured_illuminance))/diff_time;
+									i++;
+								}
 							}
 						}
 					}
 				}
 				multifunfloat /= (i/3);
-				std::cout << "f T " << multifunfloat << std::endl;
+				std::cout << "f T " << multifunfloat*1000000 << std::endl;
 			}
 		}
 	}

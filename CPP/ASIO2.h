@@ -7,15 +7,18 @@
 #include <string>
 #include <sstream>
 #include <boost/asio.hpp>
+#include <sys/time.h>
+
 using namespace boost::system;
 using namespace boost::asio;
 
 #define paramNumber 2
 #define luminaireNumber 3
-#define perminute 100
+#define perminute 6000
 
 struct measure{
   std::time_t current_time;
+  struct timeval tv;
 	float measured_illuminance;
 	float duty_cycle;
   float current_ref;
@@ -58,8 +61,8 @@ bool realtime[luminaireNumber*2] = {false, false, false, false, false, false};
 LinkedList bufferqueue[luminaireNumber];
 float data[luminaireNumber*paramNumber];
 float energy[luminaireNumber] = {0, 0, 0};
-float current_ref_occupied[luminaireNumber] = {0, 0, 0};
-float current_ref_unoccupied[luminaireNumber] = {0, 0, 0};
+float current_ref_occupied[luminaireNumber] = {70, 70, 70};
+float current_ref_unoccupied[luminaireNumber] = {30, 30, 30};
 float current_occupation[luminaireNumber] = {0, 0, 0};
 float read_value;
 
