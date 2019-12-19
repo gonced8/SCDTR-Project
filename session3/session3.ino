@@ -21,17 +21,13 @@ PcComms pcComms;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
-//bool writeFlag = false;
-//volatile bool sendFlag = false;
 
 byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
 #define ID0 7
 #define ID1 8
 
-//float u_pid;
 bool saturateInt = false;
-//bool resetAWU = false;
 
 float dutyCycles[maxNodes];
 float luxs[maxNodes];
@@ -47,7 +43,6 @@ void timerIntConfig();
 
 ISR(TIMER1_COMPA_vect) {
   sampFlag = true;
-  //sendFlag = false;
 }
 /*---------------------------------------------*/
 

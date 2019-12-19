@@ -64,7 +64,13 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
 }
 
 bool LedConsensus::detectChanges() {
-  return (abs(u_pid) > threshold);
+  if (abs(u_pid) > threshold || changedLuxRef || changedCost) {
+    changedLuxRef = false;
+    changedCost = false;
+    return true;
+  }
+  else
+    return false;
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -88,48 +94,24 @@ bool LedConsensus::f_iCalc(float* d) {
 void LedConsensus::setLocalC(float _c_i) {
   c_i = _c_i;
   c[nodeId - 1] = c_i;
-}
-
-float LedConsensus::getLocalC() {
-  return c_i;
+  changedCost = true;
 }
 
 void LedConsensus::setLocalO(float _o_i) {
   o_i = _o_i;
 }
 
-float LedConsensus::getLocalO() {
-  return o_i;
-}
-
 void LedConsensus::setLocalL(float _L_i) {
   L_i = _L_i;
-}
-
-float LedConsensus::getLocalL() {
-  return L_i;
-}
-
-void LedConsensus::getLocalDMean(float* new_dAvg) {
-  memcpy(new_dAvg, dAvg, nNodes * sizeof(float));
+  changedLuxRef = true;
 }
 
 float LedConsensus::getLocalD() {
   return dNodeOverall[nodeId - 1];
 }
 
-float LedConsensus::getMeasuredLux() {
-  return measuredLux;
-}
-
 float LedConsensus::calcExpectedLux() {
   return dotProd(k, dNodeOverall);
-}
-
-void LedConsensus::calcNewO() {
-  float new_o = getLux(analogRead(ldrPin)) - calcExpectedLux();
-  Serial.print("New o inside consensus is "); Serial.println(new_o);
-  o_i = new_o;
 }
 
 float LedConsensus::evaluateCost(float* local_d) {
@@ -140,7 +122,7 @@ float LedConsensus::evaluateCost(float* local_d) {
   return local_cost;
 }
 
-bool LedConsensus::findMinima() {
+void LedConsensus::findMinima() {
   // OUTPUTS:
   // dNode: array with local optimal led duty cycles (note: only need the own node duty cycle)
   // bool: true if feasible, false if unfeasible

@@ -45,7 +45,6 @@ extern float measuredLux;
 class LedConsensus {
     byte nodeId;
     byte nNodes;
-    float c[maxNodes];
     float dNode[maxNodes];
     float dAvg[maxNodes];
     float rho;
@@ -61,9 +60,12 @@ class LedConsensus {
     float dColumn[maxNodes];
     bool boolArray[maxNodes];
     byte nBool;
+    bool changedLuxRef = false;
+    bool changedCost = false;
 
   public:
     float c_i;
+    float c[maxNodes];
     float dNodeOverall[maxNodes];
     float o_i = 0;
     float L_i = 0;
@@ -83,15 +85,9 @@ class LedConsensus {
     void init(byte nodeId, byte nNodes, float rho, byte c_i);
     bool detectChanges();
     void setLocalC(float c_i);
-    float getLocalC();
     void setLocalO(float o_i);
-    float getLocalO();
     void setLocalL(float L_i);
-    float getLocalL();
-    void getLocalDMean(float* dAvg);
     float getLocalD();
-    float getMeasuredLux();
-    void calcNewO();
     float calcExpectedLux();
     void tellOthers();
     void tellStart();
