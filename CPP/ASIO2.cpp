@@ -60,7 +60,7 @@ void printList(LinkedList toprint, int argument) {
 }
 
 void open_port(){
-		char port_name[] = "/dev/cu.usbmodem143101";
+		char port_name[] = "/dev/cu.usbmodem141101";
 	sp.open(port_name, ec);
 	while(ec){
 		std::cout << "Could not open serial port" << std::endl;
@@ -111,8 +111,13 @@ void read_handler(const error_code &ec, size_t nbytes) {
 	else if(msg == '!'){
 		int auxint;
 		int readparameters;
-		readparameters = sscanf(mybuffer.str().c_str(), "!%d %f %f", &auxint, &datalocal[1], &datalocal[2]);
-		if(readparameters == 3){
+	    //	readparameters = sscanf(mybuffer.str().c_str(), "!%d %f %f", &auxint, &datalocal[1], &datalocal[2]);
+		
+		auxint = line.at(1);
+		std::string::size_type sz;
+		datalocal[1] = std::stof(line.substr(3), &sz);
+		datalocal[2] = std::stof(line.substr(3+sz), NULL);
+
 			datalocal[0] = static_cast<float> (auxint);
 			for(int i=0; i<paramNumber;i++){
 					data[(static_cast<int>(datalocal[0]) - 1)*paramNumber + i] = datalocal[i+1];
@@ -136,9 +141,10 @@ void read_handler(const error_code &ec, size_t nbytes) {
 			if(bufferqueue[static_cast<int>(datalocal[0]) - 1].size() > perminute) // More than one minute
 				bufferqueue[static_cast<int>(datalocal[0]) - 1].pop();
 			energy[static_cast<int>(datalocal[0]) - 1] += (datalocal[1]/100)*(60/perminute);
-		}
 
 	}
+	else
+		std::cout << line << std::endl;
 
 
 	tim.expires_from_now(boost::posix_time::milliseconds(1));
@@ -146,7 +152,6 @@ void read_handler(const error_code &ec, size_t nbytes) {
 }
 
 void prettyPrint (std::string s){
-	int readparameters;
 	char messagenum;
 	int luminaire;
 	float multifunfloat;
@@ -258,10 +263,12 @@ void choose_case(std::string s) {
 			luminaire = 0; // All luminaires
 		}
 		if(s.at(2) == 'l'){
-			std::cout << "l " << luminaire << " " << data[(luminaire-1)*paramNumber + 0] << std::endl;
+			//std::cout << "l " << luminaire << " " << data[(luminaire-1)*paramNumber + 0] << std::endl;
+			std::cout << "l " << luminaire << " " << bufferqueue[luminaire-1].back()->value().measured_illuminance << std::endl;
 		}
 		else if(s.at(2) == 'd'){
-			std::cout << "d " << luminaire << " " << data[(luminaire-1)*paramNumber + 1] << std::endl;
+			//std::cout << "d " << luminaire << " " << data[(luminaire-1)*paramNumber + 1] << std::endl;
+			std::cout << "d " << luminaire << " " << bufferqueue[luminaire-1].back()->value().duty_cycle << std::endl;
 		}
 		else if(s.at(2) == 'o'){
 			std::cout << "Entrou \n";
