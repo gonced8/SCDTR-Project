@@ -23,7 +23,8 @@
 #define R1 10         // [KOhm]
 
 #define maxIters 20
-#define threshold 20
+#define threshold 5
+
 /*-------Variable declaration-------*/
 // LDR calibration
 extern const float m[maxNodes];
@@ -45,7 +46,6 @@ extern float measuredLux;
 class LedConsensus {
     byte nodeId;
     byte nNodes;
-    float c[maxNodes];
     float dNode[maxNodes];
     float dAvg[maxNodes];
     float rho;
@@ -56,14 +56,17 @@ class LedConsensus {
     bool first;
     bool handshakes[maxNodes];
     byte nHand;
-    float tol = 0.01;
+    float tol = 0.001;
     byte state;
     float dColumn[maxNodes];
     bool boolArray[maxNodes];
     byte nBool;
+    bool changedLuxRef = false;
+    bool changedCost = false;
 
   public:
     float c_i;
+    float c[maxNodes];
     float dNodeOverall[maxNodes];
     float o_i = 0;
     float L_i = 0;
@@ -74,7 +77,7 @@ class LedConsensus {
     float dotProd(float x[maxNodes], float y[maxNodes]);
     bool f_iCalc(float* d);
     float evaluateCost(float* d);
-    bool findMinima();
+    void findMinima();
     void calcMeanVector();
     void calcLagrangeMult();
     void resetBool();
@@ -83,15 +86,9 @@ class LedConsensus {
     void init(byte nodeId, byte nNodes, float rho, byte c_i);
     bool detectChanges();
     void setLocalC(float c_i);
-    float getLocalC();
     void setLocalO(float o_i);
-    float getLocalO();
     void setLocalL(float L_i);
-    float getLocalL();
-    void getLocalDMean(float* dAvg);
     float getLocalD();
-    float getMeasuredLux();
-    void calcNewO();
     float calcExpectedLux();
     void tellOthers();
     void tellStart();
@@ -103,7 +100,7 @@ class LedConsensus {
     void run();
 
     void ask();
-    void ans(byte senderId, char code);
+    void ans(byte senderId, char code, float value);
     void rcv(byte senderId, char code, float value);
 };
 

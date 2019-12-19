@@ -129,25 +129,25 @@ void PcComms::ans(byte senderId, char code, float value) {
       write(senderId, set_occupied_ans, 0);
       deskOccupancy = value == 1;
       if (deskOccupancy)
-        ledConsensus.L_i = luxRefOcc;
+        ledConsensus.setLocalL(luxRefOcc);
       else
-        ledConsensus.L_i = luxRefUnocc;
+        ledConsensus.setLocalL(luxRefUnocc);
       break;
     case set_occupied_value_ask:
       write(senderId, set_occupied_value_ans, 0);
       luxRefOcc = value;
       if (deskOccupancy)
-        ledConsensus.L_i = luxRefOcc;
+        ledConsensus.setLocalL(luxRefOcc);
       break;
     case set_unoccupied_value_ask:
       write(senderId, set_unoccupied_value_ans, 0);
       luxRefUnocc = value;
       if (!deskOccupancy)
-        ledConsensus.L_i = luxRefUnocc;
+        ledConsensus.setLocalL(luxRefUnocc);
       break;
     case set_cost_ask:
       write(senderId, set_cost_ans, 0);
-      ledConsensus.c_i = value;
+      ledConsensus.setLocalC(value);
       break;
     case set_restart_ask:
       write(senderId, set_restart_ans, 0);
@@ -272,8 +272,8 @@ void PcComms::SerialDecode() {
   //sscanf(message, "%d %d %*f", &luminaire, &code);
   luminaire = message[0];
   code = message[2];
-  value = atof(message+4);
-  
+  value = atof(message + 4);
+
   // Check if message is for hub
   bool own = luminaire == nodeId;
   Serial.print("Own "); Serial.println(own);
@@ -372,7 +372,7 @@ void PcComms::SerialDecode() {
       }
       else {
         code = time_since_restart_ans;
-        value = ledConsensus.dNodeOverall[nodeId - 1];
+        value = millis() / 1000.0;
       }
       break;
 
@@ -385,9 +385,9 @@ void PcComms::SerialDecode() {
       else {
         deskOccupancy = value == 1;
         if (deskOccupancy)
-          ledConsensus.L_i = luxRefOcc;
+          ledConsensus.setLocalL(luxRefOcc);
         else
-          ledConsensus.L_i = luxRefUnocc;
+          ledConsensus.setLocalL(luxRefUnocc);
 
         code = set_occupied_ans;
         value = 0;
@@ -403,7 +403,7 @@ void PcComms::SerialDecode() {
       else {
         luxRefOcc = value;
         if (deskOccupancy)
-          ledConsensus.L_i = luxRefOcc;
+          ledConsensus.setLocalL(luxRefOcc);
 
         code = set_occupied_value_ans;
         value = 0;
@@ -419,7 +419,7 @@ void PcComms::SerialDecode() {
       else {
         luxRefUnocc = value;
         if (!deskOccupancy)
-          ledConsensus.L_i = luxRefUnocc;
+          ledConsensus.setLocalL(luxRefUnocc);
 
         code = set_unoccupied_value_ans;
         value = 0;
@@ -433,7 +433,7 @@ void PcComms::SerialDecode() {
         id_set_cost = luminaire;
       }
       else {
-        ledConsensus.c_i = value;
+        ledConsensus.setLocalC(value);
         code = set_unoccupied_value_ans;
         value = 0;
       }

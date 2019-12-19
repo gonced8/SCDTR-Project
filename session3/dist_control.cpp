@@ -20,6 +20,7 @@ const float infinity = 1.0 / 0.0;
 float measuredLux = 0;
 
 extern float u_pid;
+extern float u_con;
 extern float u;
 extern PID pid;
 
@@ -64,7 +65,13 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
 }
 
 bool LedConsensus::detectChanges() {
-  return (abs(u_pid) > threshold);
+  if (abs(pid.ep) > threshold || changedLuxRef || changedCost) {
+    changedLuxRef = false;
+    changedCost = false;
+    return true;
+  }
+  else
+    return false;
 }
 
 void LedConsensus::ziCalc(float* zi) {
@@ -88,59 +95,35 @@ bool LedConsensus::f_iCalc(float* d) {
 void LedConsensus::setLocalC(float _c_i) {
   c_i = _c_i;
   c[nodeId - 1] = c_i;
-}
-
-float LedConsensus::getLocalC() {
-  return c_i;
+  changedCost = true;
 }
 
 void LedConsensus::setLocalO(float _o_i) {
   o_i = _o_i;
 }
 
-float LedConsensus::getLocalO() {
-  return o_i;
-}
-
 void LedConsensus::setLocalL(float _L_i) {
   L_i = _L_i;
-}
-
-float LedConsensus::getLocalL() {
-  return L_i;
-}
-
-void LedConsensus::getLocalDMean(float* new_dAvg) {
-  memcpy(new_dAvg, dAvg, nNodes * sizeof(float));
+  changedLuxRef = true;
 }
 
 float LedConsensus::getLocalD() {
   return dNodeOverall[nodeId - 1];
 }
 
-float LedConsensus::getMeasuredLux() {
-  return measuredLux;
-}
-
 float LedConsensus::calcExpectedLux() {
   return dotProd(k, dNodeOverall);
-}
-
-void LedConsensus::calcNewO() {
-  float new_o = getLux(analogRead(ldrPin)) - calcExpectedLux();
-  Serial.print("New o inside consensus is "); Serial.println(new_o);
-  o_i = new_o;
 }
 
 float LedConsensus::evaluateCost(float* local_d) {
   float local_cost = 0;
   for (byte i = 0; i < nNodes; i++)
-    local_cost += y[i] * (local_d[i] - dAvg[i]) + (rho / 2) * (local_d[i] - dAvg[i]) * (local_d[i] - dAvg[i]);
+    local_cost += (y[i] * (local_d[i] - dAvg[i]) + (rho / 2) * (local_d[i] - dAvg[i]) * (local_d[i] - dAvg[i]));
   local_cost += c_i * local_d[nodeId - 1];
   return local_cost;
 }
 
-bool LedConsensus::findMinima() {
+void LedConsensus::findMinima() {
   // OUTPUTS:
   // dNode: array with local optimal led duty cycles (note: only need the own node duty cycle)
   // bool: true if feasible, false if unfeasible
@@ -211,9 +194,9 @@ bool LedConsensus::findMinima() {
 
     //Solution 4
     aux = dotProd(k, k) - k[nodeId - 1] * k[nodeId - 1];
-    aux2 = -dotProd(k, zi) + k[nodeId - 1] * zi[nodeId - 1];
+    aux2 = k[nodeId - 1] * zi[nodeId - 1] - dotProd(k, zi);
     for (byte i = 0; i < nNodes; i++)
-      d_temp[i] = zi[i] / rho - (k[i] / (aux)) * (o_i - L_i) + (1 / rho) * (k[i] / (aux)) * (aux2);
+      d_temp[i] = zi[i] / rho - (k[i] / aux) * (o_i - L_i) + (1 / rho / aux) * k[i]  * aux2;
     d_temp[nodeId - 1] = 0;
 
     if (f_iCalc(d_temp)) { // Solution is feasible
@@ -272,7 +255,7 @@ void LedConsensus::resetConsensus() {
 }
 
 void LedConsensus::run() {
-  // Serial.println(state);
+  //Serial.println(state);
   switch (state) {
     // See if need to start new consensus
     case 0:
@@ -297,13 +280,11 @@ void LedConsensus::run() {
       dNodeOverall[nodeId - 1] = u;
       measuredLux = getLux(analogRead(ldrPin));
       Serial.print("Measured lux is "); Serial.println(measuredLux);
-      //Serial.print("New o is "); Serial.println(aux);
       setLocalO(measuredLux - calcExpectedLux());
+      Serial.print("New o is "); Serial.println(o_i);
+      //o_i = 0;
       resetConsensus();
 
-      /*for (byte i = 1; i <= nNodes; i++) {
-        Serial.print("Led "); Serial.print(i); Serial.print(" "); Serial.println(dNodeOverall[i - 1]);
-        }*/
       state++;
       break;
 
@@ -338,9 +319,10 @@ void LedConsensus::run() {
       if (remainingIters > 0)
         state = 9;
       else {
-        dNodeOverall[nodeId - 1] = dNode[nodeId - 1];
+        u_con = dNode[nodeId - 1];
         pid.ip = 0;
         state = 0;
+        analogWrite(ledPin, constrain((int)(u_con * 2.55 + 0.5), 0, 255));
       }
       break;
 
@@ -400,10 +382,10 @@ void LedConsensus::ask() {
   }
 }
 
-void LedConsensus::ans(byte senderId, char code) {
+void LedConsensus::ans(byte senderId, char code, float value) {
   bool valid = false;
   char ans_code;
-  float value;
+  float ans_value;
 
   switch (code) {
     case start_ask:
@@ -413,27 +395,27 @@ void LedConsensus::ans(byte senderId, char code) {
     case real_ask:
       valid = (state >= 2 && state <= 5);
       ans_code = real_ans;
-      value = dNodeOverall[nodeId - 1];
+      ans_value = u;
       break;
     case duty_cycle_ask:
       valid = (state >= 5 && state <= 7);
       ans_code = duty_cycle_ans;
-      value = dNode[senderId - 1];
+      ans_value = dNode[senderId - 1];
       break;
     case mean_ask:
-      valid = (state >= 7 || state <= 9);
+      valid = (state >= 7 && state <= 9 || state <= 2);
       ans_code = mean_ans;
-      value = dAvg[nodeId - 1];
+      ans_value = dAvg[nodeId - 1];
       break;
     case wait_ask:
       valid = (state == 9 || state == 4 || state == 5);
       ans_code = wait_ans;
-      value = remainingIters;
+      ans_value = remainingIters;
       break;
   }
 
   if (valid) {
-    write(senderId, ans_code, value);
+    write(senderId, ans_code, ans_value);
     if (code == start_ask && state == 0) {
       state = 2;
       return;
@@ -475,10 +457,10 @@ void LedConsensus::rcv(byte senderId, char code, float value) {
         *variable = value;
 
       if (nBool == nNodes - 1) {
-        if (state == 9){
+        if (state == 9) {
           state = 4;
         }
-        else{
+        else {
           state++;
         }
         resetBool();

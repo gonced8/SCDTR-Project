@@ -21,23 +21,20 @@ PcComms pcComms;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
-//bool writeFlag = false;
-//volatile bool sendFlag = false;
 
 byte nodeId; // initialize the variable to make it global
 byte nNodes = 3; // TODO: should be automatically computed
 #define ID0 7
 #define ID1 8
 
-//float u_pid;
 bool saturateInt = false;
-//bool resetAWU = false;
 
 float dutyCycles[maxNodes];
 float luxs[maxNodes];
 
 extern bool saturateInt;
 float u_pid = 0;
+float u_con = 0;
 float u;
 
 /*----------- Function Definitions ------------*/
@@ -47,7 +44,6 @@ void timerIntConfig();
 
 ISR(TIMER1_COMPA_vect) {
   sampFlag = true;
-  //sendFlag = false;
 }
 /*---------------------------------------------*/
 
@@ -72,7 +68,7 @@ void setup() {
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
   ledConsensus.init(nodeId, nNodes, 0.1, 1);
-  pid.init(1, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
+  pid.init(0, 0, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
   pcComms.init(nodeId, nNodes);
 
   timerIntConfig();
@@ -106,14 +102,14 @@ void loop() {
 
 
       for (byte i = 0; i < nNodes; i++) {
-        Serial.print('!'); Serial.print(i + 1); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
+        Serial.print('!'); Serial.write(i + 1); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
       }
 
 
       if (pid.on)
         u_pid = pid.calc(ledConsensus.L_i, luxs[nodeId - 1], saturateInt);
       //Serial.print("PID u"); Serial.println(u_pid);
-      u = ledConsensus.dNodeOverall[nodeId - 1] + u_pid;
+      u = u_con + u_pid;
       saturateInt = (u <= 0.0 || u >= 100.0);
       dutyCycles[nodeId - 1] = u;
       analogWrite(ledPin, constrain((int)(u * 2.55 + 0.5), 0, 255));
@@ -187,7 +183,7 @@ void handleNewMessages() {
       // Consensus run
       default:
         if (code == real_ask || code == start_ask || code == duty_cycle_ask || code == mean_ask || code == wait_ask)
-          ledConsensus.ans(senderId, code);
+          ledConsensus.ans(senderId, code, value);
 
         else if (code == real_ans || code == start_ans || code == duty_cycle_ans || code == mean_ans || code == wait_ans)
           ledConsensus.rcv(senderId, code, value);
