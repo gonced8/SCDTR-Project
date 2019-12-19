@@ -322,7 +322,6 @@ void LedConsensus::run() {
         u_con = dNode[nodeId - 1];
         pid.ip = 0;
         state = 0;
-        analogWrite(ledPin, constrain((int)(u_con * 2.55 + 0.5), 0, 255));
       }
       break;
 

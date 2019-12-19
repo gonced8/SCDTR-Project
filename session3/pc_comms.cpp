@@ -123,7 +123,7 @@ void PcComms::ans(byte senderId, char code, float value) {
       write(senderId, current_cost_ans, ledConsensus.c_i);
       break;
     case time_since_restart_ask:
-      write(senderId, time_since_restart_ans, millis() / 1000.0);
+      write(senderId, time_since_restart_ans, ((float)millis()) / 1000.0);
       break;
     case set_occupied_ask:
       write(senderId, set_occupied_ans, 0);
@@ -350,7 +350,7 @@ void PcComms::SerialDecode() {
       }
       else {
         code = current_reference_ans;
-        value = millis() / 1000.0;
+        value = millis() / 1000.0;      // ESTA MAL!!!!!
       }
       break;
 
