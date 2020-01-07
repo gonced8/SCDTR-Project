@@ -22,8 +22,8 @@ PcComms pcComms;
 /* Interruption flags */
 volatile boolean sampFlag = false;
 
-byte nodeId; // initialize the variable to make it global
-byte nNodes = 3; // TODO: should be automatically computed
+byte nodeId;
+byte nNodes = 3;
 #define ID0 7
 #define ID1 8
 
@@ -36,6 +36,9 @@ extern bool saturateInt;
 float u_pid = 0;
 float u_con = 0;
 float u;
+
+//float pid_ref;
+
 
 /*----------- Function Definitions ------------*/
 void handleInterrupt();
@@ -96,7 +99,6 @@ void loop() {
       sampFlag = false;
 
       // Stream duty cycle and lux to pc
-      //dutyCycles[nodeId - 1] = ledConsensus.dNodeOverall[nodeId - 1];     // THIS WORKS BETTER THAN THE VALUE FROM THE PID
       luxs[nodeId - 1] = getLux(analogRead(ldrPin));
 
       // Send duty cycle and lux to other nodes
@@ -112,13 +114,25 @@ void loop() {
       if (pid.on)
         u_pid = pid.calc(ledConsensus.L_i, luxs[nodeId - 1], saturateInt);
       //Serial.print("PID u"); Serial.println(u_pid);
+      if (ledConsensus.getState() != 0) {
+        u_con = 0;
+        for (byte i = 0; i < nNodes; i++) {
+          if (i != nodeId - 1)
+            u_con = u_con + k[i] * dutyCycles[i];
+        }
+        // u_con now has lux coming from the others to this node
+
+        u_con = (ledConsensus.L_i - u_con) / k[nodeId - 1]; // subtract lux_others and divide k to obtain DC from lux
+      }
+      //if (u_pid < 0) only using this, can show that cooperative works!
+      //u = u_con;
+      //else
       u = u_con + u_pid;
       saturateInt = (u <= 0.0 || u >= 100.0);
       dutyCycles[nodeId - 1] = u;
       analogWrite(ledPin, constrain((int)(u * 2.55 + 0.5), 0, 255));
       //Serial.print("u PID = "); Serial.println(u_pid);
     }
-    //
 
     if (Serial.available() > 0) {
       Serial.println("Entered available");

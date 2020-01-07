@@ -22,6 +22,7 @@ float measuredLux = 0;
 extern float u_pid;
 extern float u_con;
 extern float u;
+//extern float pid_ref;
 extern PID pid;
 
 /*--------Function definition--------*/
@@ -53,10 +54,14 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
   }
   c[nodeId - 1] = c_i;
   // Ref setup
-  if (deskOccupancy)
+  if (deskOccupancy) {
     setLocalL(luxRefOcc);
-  else
+    //pid_ref = luxRefOcc;
+  }
+  else {
     setLocalL(luxRefUnocc);
+    //pid_ref = luxRefUnocc;
+  }
   // Comms setup
   last_time = millis();
 
@@ -64,8 +69,12 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
   first = true;
 }
 
+byte LedConsensus::getState() {
+  return state;
+}
+
 bool LedConsensus::detectChanges() {
-  if (abs(pid.ep) > threshold || changedLuxRef || changedCost) {
+  if (abs(u_pid) > threshold || changedLuxRef || changedCost) {
     changedLuxRef = false;
     changedCost = false;
     return true;
@@ -105,10 +114,6 @@ void LedConsensus::setLocalO(float _o_i) {
 void LedConsensus::setLocalL(float _L_i) {
   L_i = _L_i;
   changedLuxRef = true;
-}
-
-float LedConsensus::getLocalD() {
-  return dNodeOverall[nodeId - 1];
 }
 
 float LedConsensus::calcExpectedLux() {
@@ -319,7 +324,8 @@ void LedConsensus::run() {
       if (remainingIters > 0)
         state = 9;
       else {
-        u_con = dNode[nodeId - 1];
+        u_con = dAvg[nodeId - 1];
+        //pid_ref = dotProd(k, dAvg);
         pid.ip = 0;
         state = 0;
       }
@@ -353,7 +359,7 @@ void LedConsensus::ask() {
         break;
       case 2:
         code = real_ask;
-        value = u;  // REVISE
+        value = u;
         break;
       case 7:
         code = mean_ask;

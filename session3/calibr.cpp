@@ -157,7 +157,7 @@ void Calibration::rcv(byte senderId, char code) {
             b[nodeId - 1] = getB(measurements[nodeId]);
 
             for (byte i = 1; i <= nNodes; i++) {
-              k[i - 1] = getLux(measurements[i]) / 100;
+              k[i - 1] = (float) getLux(measurements[i]) / 100;
               Serial.println(k[i - 1]);
             }
 

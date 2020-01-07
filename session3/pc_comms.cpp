@@ -473,7 +473,7 @@ void PcComms::SerialDecode() {
       break;
   }
 
-  delay(10);
+  //delay(5);
   if (!own)
     first = true;
   else

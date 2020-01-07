@@ -84,11 +84,11 @@ class LedConsensus {
 
   public:
     void init(byte nodeId, byte nNodes, float rho, byte c_i);
+    byte getState();
     bool detectChanges();
     void setLocalC(float c_i);
     void setLocalO(float o_i);
     void setLocalL(float L_i);
-    float getLocalD();
     float calcExpectedLux();
     void tellOthers();
     void tellStart();

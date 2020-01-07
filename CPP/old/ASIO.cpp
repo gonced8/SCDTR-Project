@@ -78,10 +78,6 @@ void timer_handler(const error_code &ec){
 	async_read_until(sp, arduinocomms_buff, '\n', read_handler);
 }
 
-void start_read_arduino(){
-	async_read_until(sp, arduinocomms_buff, '\n', read_handler);
-}
-
 void read_handler(const error_code &ec, size_t nbytes) {
 	// Arduino data is now available at read_buf
 	// Lets first put it into a string to process it better
@@ -132,9 +128,8 @@ void read_handler(const error_code &ec, size_t nbytes) {
 			bufferqueue[index].pop();
 	}
 
-	//tim.expires_from_now(boost::posix_time::milliseconds(1)); // Prepare new read
-	//tim.async_wait(timer_handler); // Put read on the queue
-	start_read_arduino();
+	tim.expires_from_now(boost::posix_time::milliseconds(1)); // Prepare new read
+	tim.async_wait(timer_handler); // Put read on the queue
 }
 
 void prettyPrint (std::string s){
@@ -440,9 +435,8 @@ void send_arduino(char luminaire, char messagenum, float parameter){
 int main() {
 	open_port();
 	//program timer for read arduino operations
-	//tim.expires_from_now(boost::posix_time::milliseconds(10));
-	//tim.async_wait(timer_handler); // Start the reading arduino loop
-	start_read_arduino();
+	tim.expires_from_now(boost::posix_time::milliseconds(10));
+	tim.async_wait(timer_handler); // Start the reading arduino loop
 	start_read_input(); // Input from the PC
 	io.run(); //get things rolling
 }
