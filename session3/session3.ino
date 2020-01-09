@@ -114,7 +114,9 @@ void loop() {
 
         case 51:
           if (value == nMessages) {
-            time_sum += (micros() - first_time);
+            last_time = micros();
+            time_sum += (last_time - first_time);
+            Serial.println(last_time - first_time);
             nMessages++;
             first = true;
           }
