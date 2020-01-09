@@ -37,9 +37,9 @@ float u_pid = 0;
 float u_con = 0;
 float u;
 
-#define TOTAL_MESSAGES 100
+#define TOTAL_MESSAGES 10000
 unsigned int nMessages = 0;
-unsigned int timeout = 100;
+unsigned int timeout = 5; // [us] = 5 ms
 bool first = true;
 unsigned long current_time = 0;
 unsigned long last_time = 0;
@@ -92,31 +92,65 @@ void(* resetFunc) (void) = 0; //declare reset function @ address 0
 void loop() {
   //Serial.print("interrupt "); Serial.println(interrupt);
   if (interrupt) { // there are new messages
-    handleNewMessages();
+    interrupt = false;
+
+    if (mcp2515_overflow) {
+      Serial.println("\t\tError: MCP2516 RX Buffers Overflow");
+      mcp2515_overflow = false;
+    }
+
+    if (arduino_overflow) {
+      Serial.println("\t\tError: Arduino Stream Buffers Overflow");
+      arduino_overflow = false;
+    }
+
+    while ( cf_stream.get(frame) ) {
+      decodeMessage(frame, senderId, code, value);
+
+      switch (code) {
+        case 50:
+          write(senderId, 51, value);
+          break;
+
+        case 51:
+          if (value == nMessages) {
+            time_sum += (micros() - first_time);
+            nMessages++;
+            first = true;
+          }
+          break;
+
+        // Synchronize
+        case sync_ask:
+          sync.answer_node(senderId);
+          break;
+
+        case sync_ans:
+          sync.receive_answer(senderId);
+          break;
+      }
+    }
   }
 
-  if (sampFlag) {
-    sampFlag = false;
-    
-    if (sync.isOn())
-      sync.ask_node();
+  if (sync.isOn())
+    sync.ask_node();
 
-    else if (nodeId == 1) {
-      if (nMessages < TOTAL_MESSAGES) {
-        current_time = millis();
+  else if (nodeId == 1 && sampFlag) {
+    sampFlag = false;
+
+    if (nMessages < TOTAL_MESSAGES) {
+      current_time = micros();
+      if (first || (current_time - last_time > timeout)) { // send message
+        write(2, 50, nMessages);
+        last_time = current_time;
         if (first) {
-          time_sum += (current_time - first_time);
           first_time = current_time;
         }
-        if (first || (current_time - last_time > timeout)) { // send message
-          last_time = current_time;
-          write(2, 50, nMessages);
-        }
       }
-      else {
-        mean_time = ((float)time_sum) / TOTAL_MESSAGES;
-        Serial.print("Mean time for "); Serial.print(TOTAL_MESSAGES); Serial.print(" was "); Serial.print(mean_time); Serial.println(" ms");
-      }
+    }
+    else {
+      mean_time = ((float)time_sum) / TOTAL_MESSAGES;
+      Serial.print("Mean time for "); Serial.print(TOTAL_MESSAGES); Serial.print(" was "); Serial.print(mean_time); Serial.println(" us");
     }
   }
 
@@ -168,17 +202,6 @@ void handleNewMessages() {
         write(senderId, set_restart_ans, 0);
         if (!calibrator.isOn())
           resetFunc();
-        break;
-
-      case 50:
-        write(senderId, 51, value);
-        break;
-
-      case 51:
-        if (value == nMessages) {
-          nMessages++;
-          first = true;
-        }
         break;
 
       // Consensus run
