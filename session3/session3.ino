@@ -39,7 +39,7 @@ float u;
 
 #define TOTAL_MESSAGES 10000
 unsigned int nMessages = 0;
-unsigned int timeout = 5; // [us] = 5 ms
+unsigned int timeout = 10000; // [us] = 10 ms
 bool first = true;
 unsigned long current_time = 0;
 unsigned long last_time = 0;
