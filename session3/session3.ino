@@ -37,7 +37,15 @@ float u_pid = 0;
 float u_con = 0;
 float u;
 
-//float pid_ref;
+#define TOTAL_MESSAGES 100
+unsigned int nMessages = 0;
+unsigned int timeout = 100;
+bool first = true;
+unsigned long current_time = 0;
+unsigned long last_time = 0;
+unsigned long first_time = 0;
+unsigned long time_sum = 0;
+float mean_time;
 
 
 /*----------- Function Definitions ------------*/
@@ -83,64 +91,36 @@ void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void loop() {
   //Serial.print("interrupt "); Serial.println(interrupt);
-  if (interrupt)  // there are new messages
+  if (interrupt) { // there are new messages
     handleNewMessages();
-
-  if (sync.isOn())
-    sync.ask_node();
-
-  else if (calibrator.isOn())
-    calibrator.run(ledConsensus);
-
-  else {
-    ledConsensus.run();
-
-    if (sampFlag) {
-      sampFlag = false;
-
-      // Stream duty cycle and lux to pc
-      luxs[nodeId - 1] = getLux(analogRead(ldrPin));
-
-      // Send duty cycle and lux to other nodes
-      write(0, sample_duty_cyle, dutyCycles[nodeId - 1]);
-      write(0, sample_lux, luxs[nodeId - 1]);
-
-
-      for (byte i = 0; i < nNodes; i++) {
-        Serial.print('!'); Serial.write(i + 1); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
-      }
-
-
-      if (pid.on)
-        u_pid = pid.calc(ledConsensus.L_i, luxs[nodeId - 1], saturateInt);
-      //Serial.print("PID u"); Serial.println(u_pid);
-      if (ledConsensus.getState() != 0) {
-        u_con = 0;
-        for (byte i = 0; i < nNodes; i++) {
-          if (i != nodeId - 1)
-            u_con = u_con + k[i] * dutyCycles[i];
-        }
-        // u_con now has lux coming from the others to this node
-
-        u_con = (ledConsensus.L_i - u_con) / k[nodeId - 1]; // subtract lux_others and divide k to obtain DC from lux
-      }
-      //if (u_pid < 0) only using this, can show that cooperative works!
-      //u = u_con;
-      //else
-      u = u_con + u_pid;
-      saturateInt = (u <= 0.0 || u >= 100.0);
-      dutyCycles[nodeId - 1] = u;
-      analogWrite(ledPin, constrain((int)(u * 2.55 + 0.5), 0, 255));
-      //Serial.print("u PID = "); Serial.println(u_pid);
-    }
-
-    if (Serial.available() > 0) {
-      Serial.println("Entered available");
-      pcComms.SerialDecode();
-    }
-    pcComms.ask();
   }
-  delay(1);
+
+  if (sampFlag) {
+    sampFlag = false;
+    
+    if (sync.isOn())
+      sync.ask_node();
+
+    else if (nodeId == 1) {
+      if (nMessages < TOTAL_MESSAGES) {
+        current_time = millis();
+        if (first) {
+          time_sum += (current_time - first_time);
+          first_time = current_time;
+        }
+        if (first || (current_time - last_time > timeout)) { // send message
+          last_time = current_time;
+          write(2, 50, nMessages);
+        }
+      }
+      else {
+        mean_time = ((float)time_sum) / TOTAL_MESSAGES;
+        Serial.print("Mean time for "); Serial.print(TOTAL_MESSAGES); Serial.print(" was "); Serial.print(mean_time); Serial.println(" ms");
+      }
+    }
+  }
+
+  //delay(1);
 }
 
 void handleNewMessages() {
@@ -188,6 +168,17 @@ void handleNewMessages() {
         write(senderId, set_restart_ans, 0);
         if (!calibrator.isOn())
           resetFunc();
+        break;
+
+      case 50:
+        write(senderId, 51, value);
+        break;
+
+      case 51:
+        if (value == nMessages) {
+          nMessages++;
+          first = true;
+        }
         break;
 
       // Consensus run
