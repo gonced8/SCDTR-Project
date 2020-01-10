@@ -18,6 +18,9 @@ Sync sync;
 LedConsensus ledConsensus;
 PID pid;
 PcComms pcComms;
+float lux;
+float filtered_lux = 0.0;
+float alpha = 0.2;
 
 /* Interruption flags */
 volatile boolean sampFlag = false;
@@ -36,16 +39,6 @@ extern bool saturateInt;
 float u_pid = 0;
 float u_con = 0;
 float u;
-
-#define TOTAL_MESSAGES 10000
-unsigned int nMessages = 0;
-unsigned int timeout = 10000; // [us] = 10 ms
-bool first = true;
-unsigned long current_time = 0;
-unsigned long last_time = 0;
-unsigned long first_time = 0;
-unsigned long time_sum = 0;
-float mean_time;
 
 
 /*----------- Function Definitions ------------*/
@@ -78,8 +71,8 @@ void setup() {
 
   sync.init(nodeId, nNodes);
   calibrator.init(nodeId, nNodes);
-  ledConsensus.init(nodeId, nNodes, 0.1, 1);
-  pid.init(1, 0.1, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
+  ledConsensus.init(nodeId, nNodes, 0.1, 0.1);
+  pid.init(1, 0.4, 0, 0.01, 0.1);  // 10, 1 was initial when it worked but with overshoot
   pcComms.init(nodeId, nNodes);
 
   timerIntConfig();
@@ -91,72 +84,67 @@ void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void loop() {
   //Serial.print("interrupt "); Serial.println(interrupt);
-  if (interrupt) { // there are new messages
-    interrupt = false;
-
-    if (mcp2515_overflow) {
-      Serial.println("\t\tError: MCP2516 RX Buffers Overflow");
-      mcp2515_overflow = false;
-    }
-
-    if (arduino_overflow) {
-      Serial.println("\t\tError: Arduino Stream Buffers Overflow");
-      arduino_overflow = false;
-    }
-
-    while ( cf_stream.get(frame) ) {
-      decodeMessage(frame, senderId, code, value);
-
-      switch (code) {
-        case 50:
-          write(senderId, 51, value);
-          break;
-
-        case 51:
-          if (value == nMessages) {
-            last_time = micros();
-            time_sum += (last_time - first_time);
-            Serial.println(last_time - first_time);
-            nMessages++;
-            first = true;
-          }
-          break;
-
-        // Synchronize
-        case sync_ask:
-          sync.answer_node(senderId);
-          break;
-
-        case sync_ans:
-          sync.receive_answer(senderId);
-          break;
-      }
-    }
-  }
+  if (interrupt)  // there are new messages
+    handleNewMessages();
 
   if (sync.isOn())
     sync.ask_node();
 
-  else if (nodeId == 1 && sampFlag) {
-    sampFlag = false;
+  else if (calibrator.isOn())
+    calibrator.run(ledConsensus);
 
-    if (nMessages < TOTAL_MESSAGES) {
-      current_time = micros();
-      if (first || (current_time - last_time > timeout)) { // send message
-        write(2, 50, nMessages);
-        last_time = current_time;
-        if (first) {
-          first_time = current_time;
+  else {
+    ledConsensus.run();
+
+    if (sampFlag) {
+      sampFlag = false;
+
+      // Measure lux
+      lux = getLux(analogRead(ldrPin));
+      // Filter lux
+      filtered_lux = alpha * lux + (1 - alpha) * filtered_lux;
+
+      // Stream duty cycle and lux to pc
+      luxs[nodeId - 1] = filtered_lux;
+
+      // Send duty cycle and lux to other nodes
+      write(0, sample_duty_cyle, dutyCycles[nodeId - 1]);
+      write(0, sample_lux, luxs[nodeId - 1]);
+
+      for (byte i = 0; i < nNodes; i++) {
+        Serial.print('!'); Serial.write(i + 1); Serial.print(' '); Serial.print(luxs[i]); Serial.print(' '); Serial.println(dutyCycles[i]);
+      }
+
+      if (pid.on)
+        u_pid = pid.calc(ledConsensus.L_i, lux, saturateInt);
+      //Serial.print("PID u"); Serial.println(u_pid);
+      
+      if (pid.on) {
+        if (ledConsensus.getState() != 0) {
+          u_con = 0;
+          for (byte i = 0; i < nNodes; i++) {
+            if (i != nodeId - 1)
+              u_con = u_con + k[i] * dutyCycles[i];
+          }
+          // u_con now has lux coming from the others to this node
+
+          u_con = (ledConsensus.L_i - u_con) / k[nodeId - 1]; // subtract lux_others and divide k to obtain DC from lux
         }
       }
+      u = u_con + u_pid;
+      saturateInt = (u <= 0.0 || u >= 100.0);
+      dutyCycles[nodeId - 1] = constrain(u, 0, 100);
+      analogWrite(ledPin, constrain((int)(u * 2.55 + 0.5), 0, 255));
+      //Serial.print("u PID = "); Serial.println(u_pid);
     }
-    else {
-      mean_time = ((float)time_sum) / TOTAL_MESSAGES;
-      Serial.print("Mean time for "); Serial.print(TOTAL_MESSAGES); Serial.print(" was "); Serial.print(mean_time); Serial.println(" us");
-    }
-  }
 
-  //delay(1);
+    if (Serial.available() > 0) {
+      Serial.println("Entered available");
+      pcComms.SerialDecode();
+    }
+    pcComms.ask();
+  }
+  delay(1);
 }
 
 void handleNewMessages() {
@@ -225,7 +213,6 @@ void handleNewMessages() {
 
         else if (code >= occupancy_ans && code <= set_restart_ans)
           pcComms.rcv(senderId, code, value);
-
     }
   }
 }

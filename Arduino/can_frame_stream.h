@@ -4,7 +4,7 @@
 #include <mcp2515.h>
 
 class can_frame_stream {
-  static constexpr int buffsize = 30; //space for 10 can_messages - increase if needed
+  static constexpr int buffsize = 30; //space for 30 can_messages - increase if needed
   can_frame cf_buffer[buffsize];
   int read_index; //where to read next message
   int write_index; //where to write next message

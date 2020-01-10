@@ -8,6 +8,7 @@
 #include <sstream>
 #include <boost/asio.hpp>
 #include <sys/time.h>
+#include "comm_codes.h"
 
 using namespace boost::system;
 using namespace boost::asio;

@@ -4,7 +4,7 @@
 
 /*-------Variable definition--------*/
 // LDR calibration
-const float m[3] = { -0.67, -0.72, -0.718}; // LDR calibration
+const float m[3] = {-0.67, -0.72, -0.718}; // LDR calibration
 float b[3] = {1.763, 1.763, 1.763}; // LDR calibration
 float k[3] = {0.0, 0.0, 0.0}; // Gains
 
@@ -22,7 +22,6 @@ float measuredLux = 0;
 extern float u_pid;
 extern float u_con;
 extern float u;
-//extern float pid_ref;
 extern PID pid;
 
 /*--------Function definition--------*/
@@ -56,11 +55,9 @@ void LedConsensus::init(byte _nodeId, byte _nNodes, float _rho, byte _c_i) {
   // Ref setup
   if (deskOccupancy) {
     setLocalL(luxRefOcc);
-    //pid_ref = luxRefOcc;
   }
   else {
     setLocalL(luxRefUnocc);
-    //pid_ref = luxRefUnocc;
   }
   // Comms setup
   last_time = millis();
@@ -75,6 +72,7 @@ byte LedConsensus::getState() {
 
 bool LedConsensus::detectChanges() {
   if (abs(u_pid) > threshold || changedLuxRef || changedCost) {
+    //if (changedLuxRef || changedCost) {
     changedLuxRef = false;
     changedCost = false;
     return true;
@@ -232,6 +230,15 @@ void LedConsensus::findMinima() {
     memcpy(dNode, d_best, nNodes * sizeof(float));
     dColumn[nodeId - 1] = d_best[nodeId - 1];
   }
+
+  if (remainingIters == 1) {
+    Serial.print("Cons sol:");
+    for (byte ii = 0; ii < nNodes; ii++) {
+      Serial.print(" "); Serial.print(dNode[ii]);
+    }
+    Serial.println(" ");
+  }
+
 }
 
 
@@ -325,7 +332,6 @@ void LedConsensus::run() {
         state = 9;
       else {
         u_con = dAvg[nodeId - 1];
-        //pid_ref = dotProd(k, dAvg);
         pid.ip = 0;
         state = 0;
       }

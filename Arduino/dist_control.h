@@ -57,10 +57,10 @@ class LedConsensus {
     bool handshakes[maxNodes];
     byte nHand;
     float tol = 0.001;
-    byte state;
     float dColumn[maxNodes];
     bool boolArray[maxNodes];
     byte nBool;
+    byte state;
     bool changedLuxRef = false;
     bool changedCost = false;
 
@@ -70,7 +70,6 @@ class LedConsensus {
     float dNodeOverall[maxNodes];
     float o_i = 0;
     float L_i = 0;
-
 
   private:
     void ziCalc(float* zi);
